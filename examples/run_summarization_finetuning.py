@@ -263,8 +263,8 @@ class BertSumOptimizer(object):
         self._step = 0
 
     def _update_rate(self, stack):
-        return self.lr["stack"] * min(
-            self._step ** (-0.5), self._step * self.warmup_steps["stack"] ** (-0.5)
+        return self.lr[stack] * min(
+            self._step ** (-0.5), self._step * self.warmup_steps[stack] ** (-0.5)
         )
 
     def zero_grad(self):
@@ -275,7 +275,7 @@ class BertSumOptimizer(object):
         self._step += 1
         for stack, optimizer in self.optimizers.items():
             new_rate = self._update_rate(stack)
-            for param_group in self.optimizer:
+            for param_group in optimizer.param_groups:
                 param_group["lr"] = new_rate
             optimizer.step()
 
@@ -483,7 +483,7 @@ def main():
     )
     parser.add_argument("--do_train", type=bool, default=False, help="Run training.")
     parser.add_argument(
-        "--do_overwrite_output",
+        "--do_overwrite_output_dir",
         type=bool,
         default=False,
         help="Whether to overwrite the output dir.",
@@ -547,10 +547,10 @@ def main():
         os.path.exists(args.output_dir)
         and os.listdir(args.output_dir)
         and args.do_train
-        and not args.overwrite_output_dir
+        and not args.do_overwrite_output_dir
     ):
         raise ValueError(
-            "Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overwrite.".format(
+            "Output directory ({}) already exists and is not empty. Use --do_overwrite_output_dir to overwrite.".format(
                 args.output_dir
             )
         )

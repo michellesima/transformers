@@ -646,7 +646,7 @@ class BertModel(BertPreTrainedModel):
         if attention_mask.dim() == 2:
             if self.config.is_decoder:
                 batch_size, seq_length = input_ids.size()
-                seq_ids = torch.arange(seq_length)
+                seq_ids = torch.arange(seq_length, device=input_ids.device)
                 causal_mask = seq_ids[None, None, :].repeat(batch_size, seq_length, 1) <= seq_ids[None, :, None]
                 extended_attention_mask = causal_mask[:, None, :, :] * attention_mask[:, None, None, :]
             else:
@@ -857,7 +857,7 @@ class BertForMaskedLM(BertPreTrainedModel):
             prediction_scores = prediction_scores[:, :-1, :]
             lm_labels = lm_labels[:, 1:]
             loss_fct = CrossEntropyLoss(ignore_index=-1)
-            seq2seq_loss = loss_fct(prediction_scores.view(-1, self.config.vocab_size), lm_labels.view(-1))
+            seq2seq_loss = loss_fct(prediction_scores.reshape(-1, self.config.vocab_size), lm_labels.reshape(-1))
             outputs = (seq2seq_loss,) + outputs
 
         return outputs  # (mlm_or_seq2seq_loss), prediction_scores, (hidden_states), (attentions)
