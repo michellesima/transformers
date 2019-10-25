@@ -31,9 +31,9 @@ class ModelWithBeamSearch(nn.Module):
         self,
         model,
         beam_size,
-        start_token,
-        end_token,
-        pad_token,
+        start_token_id,
+        end_token_id,
+        pad_token_id,
         min_length,
         max_length,
         alpha,
@@ -46,9 +46,9 @@ class ModelWithBeamSearch(nn.Module):
         super(ModelWithBeamSearch, self).__init__()
         self.model = model
         self.beam_size = beam_size
-        self.start_token = start_token
-        self.end_token = end_token
-        self.pad_token = pad_token
+        self.start_token_id = start_token_id
+        self.end_token_id = end_token_id
+        self.pad_token_id = pad_token_id
         self.min_length = min_length
         self.max_length = max_length
         self.alpha = alpha
@@ -81,7 +81,7 @@ class ModelWithBeamSearch(nn.Module):
         )
         growing_beam = torch.full(
             (batch_size * self.beam_size, 1),
-            self.start_token,
+            self.start_token_id,
             dtype=torch.long,
         )
         topk_log_probabilities = torch.tensor(
@@ -115,7 +115,7 @@ class ModelWithBeamSearch(nn.Module):
             # if the beam has not attained the minimum required length we
             # make the end token arbitrarily unlikely.
             if step < self.min_length:
-                log_probabilities[self.end_token] = -1e20
+                log_probabilities[self.end_token_id] = -1e20
 
             # Remove repeating tri-grams
             if(self.args.block_trigram):
@@ -163,7 +163,7 @@ class ModelWithBeamSearch(nn.Module):
             # Check if any of the beam searches has ended during this
             # growth step. Also if top beam (most probable) has ended
             # for one element of the batch.
-            is_finished = topk_token_ids.eq(self.end_token)
+            is_finished = topk_token_ids.eq(self.end_token_id)
             if step + 1 == self.max_length:
                 is_finished.fill_(1)
             is_top_beam_finished = is_finished[:, 0].eq(1)
