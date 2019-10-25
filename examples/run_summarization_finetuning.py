@@ -29,11 +29,7 @@ import torch
 from torch.optim import Adam
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
 
-from transformers import (
-    AutoTokenizer,
-    PreTrainedSeq2seq,
-    Model2Model,
-)
+from transformers import AutoTokenizer, PreTrainedSeq2seq, Model2Model
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -97,16 +93,14 @@ class TextDataset(Dataset):
                 with open(path_to_story, encoding="utf-8") as source:
                     try:
                         raw_story = source.read()
-                        story, summary = process_story(raw_story)
+                        story_ids, summary_ids = process_story(raw_story, tokenizer)
                     except IndexError:  # skip ill-formed stories
                         continue
 
-                story = tokenizer.encode(story)
-                story_seq = _fit_to_block_size(story, block_size)
+                story_seq = _fit_to_block_size(story_ids, block_size)
                 self.source_examples.append(story_seq)
 
-                summary = tokenizer.encode(summary)
-                summary_seq = _fit_to_block_size(summary, block_size)
+                summary_seq = _fit_to_block_size(summary_ids, block_size)
                 self.target_examples.append(summary_seq)
 
         logger.info("Saving features into cache file %s", cached_features_file)
@@ -127,7 +121,7 @@ class TextDataset(Dataset):
         )
 
 
-def process_story(raw_story):
+def process_story(raw_story, tokenizer):
     """ Extract the story and summary from a story file.
 
     Attributes:
@@ -160,10 +154,19 @@ def process_story(raw_story):
 
     # join the lines. This sequence is specific to Lapata & Liu (2019).
     # Edit when you are adding a new model.
-    story = " [SEP] [CLS] ".join(story_lines)
-    summary = " [SEP] [CLS] ".join(highlights_lines)
+    story_ids = [
+        tokenizer.add_special_tokens_single_sequence(tokenizer.encode(story))
+        for story in story_lines
+    ]
+    summary_ids = [
+        tokenizer.add_special_tokens_single_sequence(tokenizer.encode(highlight))
+        for highlight in highlights_lines
+    ]
 
-    return story, summary
+    flattened_story_ids = [token for sentence in story_ids for token in sentence]
+    flattened_summary_ids = [token for sentence in summary_ids for token in sentence]
+
+    return flattened_story_ids, flattened_summary_ids
 
 
 def _add_missing_period(line):
@@ -199,7 +202,7 @@ def load_and_cache_examples(args, tokenizer):
     return dataset
 
 
-def compute_token_type_ids(sequence, separator="[CLS]"):
+def compute_token_type_ids(batch, separator_token_id):
     """ Segment embeddings as described in [1]
 
     The values {0,1} were obtained from the repository [2].
@@ -208,13 +211,16 @@ def compute_token_type_ids(sequence, separator="[CLS]"):
         arXiv preprint arXiv:1908.08345 (2019).
     [2] https://github.com/nlpyang/PreSumm (/src/prepro/data_builder.py, commit fac1217)
     """
-    embeddings = []
+    batch_embeddings = []
     sentence_num = 0
-    for s in sequence:
-        if s == separator:
-            sentence_num += 1
-        embeddings.append(sentence_num % 2)
-    return embeddings
+    for sequence in batch:
+        embeddings = []
+        for s in sequence:
+            if s == separator_token_id:
+                sentence_num += 1
+            embeddings.append(sentence_num % 2)
+        batch_embeddings.append(embeddings)
+    return torch.tensor(batch_embeddings)
 
 
 # ----------
@@ -237,19 +243,19 @@ class BertSumOptimizer(object):
         self.encoder = model.encoder
         self.decoder = model.decoder
         self.lr = lr
-        self.warmup_steps = lr.warmup_steps
+        self.warmup_steps = warmup_steps
 
         self.optimizers = {
             "encoder": Adam(
-                parameters=model.encoder.parameters(),
+                model.encoder.parameters(),
                 lr=lr["encoder"],
-                betas=(self.beta_1, self.beta_2),
+                betas=(beta_1, beta_2),
                 eps=eps,
             ),
             "decoder": Adam(
-                parameters=model.decoder.parameters(),
+                model.decoder.parameters(),
                 lr=lr["decoder"],
-                betas=(self.beta_1, self.beta_2),
+                betas=(beta_1, beta_2),
                 eps=eps,
             ),
         }
@@ -258,8 +264,7 @@ class BertSumOptimizer(object):
 
     def _update_rate(self, stack):
         return self.lr["stack"] * min(
-            self._step ** (-0.5),
-            self._step * self.warmup_steps["stack"] ** (-0.5)
+            self._step ** (-0.5), self._step * self.warmup_steps["stack"] ** (-0.5)
         )
 
     def zero_grad(self):
@@ -334,7 +339,7 @@ def train(args, model, tokenizer):
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=True)
         for step, batch in enumerate(epoch_iterator):
             source, target = batch
-            token_type_ids = compute_token_type_ids(source)
+            token_type_ids = compute_token_type_ids(source, tokenizer.cls_token_id)
             labels_src = mask_padding_tokens(source)
             labels_tgt = mask_padding_tokens(target)
 
