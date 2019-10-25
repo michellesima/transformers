@@ -343,11 +343,11 @@ def train(args, model, tokenizer):
             labels_src = mask_padding_tokens(source)
             labels_tgt = mask_padding_tokens(target)
 
-            source.to(args.device)
-            target.to(args.device)
-            token_type_ids.to(args.device)
-            labels_src.to(args.device)
-            labels_tgt.to(args.device)
+            source = source.to(args.device)
+            target = target.to(args.device)
+            token_type_ids = token_type_ids.to(args.device)
+            labels_src = labels_src.to(args.device)
+            labels_tgt = labels_tgt.to(args.device)
 
             model.train()
             outputs = model(
@@ -606,7 +606,7 @@ def main():
 
     # Evaluate the model
     results = {}
-    if args.do_eval:
+    if args.do_evaluate:
         checkpoints = []
         logger.info("Evaluate the following checkpoints: %s", checkpoints)
         for checkpoint in checkpoints:
