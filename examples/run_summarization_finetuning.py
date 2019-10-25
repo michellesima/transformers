@@ -560,7 +560,7 @@ def main():
         args.device = torch.device("cpu")
         args.n_gpu = 0
     else:
-        args.device = torch.device("cpu")
+        args.device = torch.device("cuda")
         args.n_gpu = torch.cuda.device_count()
 
     # Load pretrained model and tokenizer
