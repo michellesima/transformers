@@ -11,6 +11,20 @@ output = 'out'
 random_seed = 7
 tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
 
+def __add_pad(list):
+    res = [__sen_pad(sen) for sen in list]
+    return res
+
+def __sen_pad(sen):
+    max_sen_len = 16
+    if len(sen) < max_sen_len:
+        pad = [tokenizer.encoder['<pad>'] for i in range(max_sen_len - len(sen))]
+        return pad.extend(sen)
+    elif len(sen) > max_sen_len:
+        orilen = len(sen)
+        for i in range(orilen - max_sen_len):
+            sen.pop(len(sen) - 2)
+    return sen
 
 def __make_dataset(df):
     df[input] = '<start> ' + df[sen_text].astype(str) + ' <' + df[agency].astype(str) + '>'
@@ -20,8 +34,10 @@ def __make_dataset(df):
     tokenizer.pad_token = '<pad>'
     tokenizer.cls_token = ['<pos>', '<neg>', '<equal>']
     max_sen_len = 16
-    list_id = [tokenizer.encode(sen, max_length=max_sen_len) for sen in df[input]]
-    labels = pd.Series(index=df[input], data=df[output].tolist())
+    list_id = [tokenizer.encode(sen) for sen in df[input]]
+    list_id = __add_pad(list_id)
+    outsen = __add_pad(df[output].tolist())
+    labels = pd.Series(index=df[input], data=outsen)
     dataset = Dataset(list_IDs=list_id, labels=labels)
     return dataset
 
@@ -57,7 +73,7 @@ if __name__ == '__main__':
         for local_batch, local_labels in training_generator:
             # Transfer to GPU
             local_batch, local_labels = local_batch.to(device), local_labels.to(device)
-
+            
 
             # Model computations
             [...]
