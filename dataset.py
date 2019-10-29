@@ -5,8 +5,9 @@ class Dataset(data.Dataset):
   'Characterizes a dataset for PyTorch'
   def __init__(self, list_IDs, labels):
         'Initialization'
-        self.labels = labels
         self.list_IDs = list_IDs
+        self.labels = labels
+
 
   def __len__(self):
         'Denotes the total number of samples'
@@ -17,7 +18,7 @@ class Dataset(data.Dataset):
         # Select sample
         ID = self.list_IDs[index]
         # Load data and get label
-        X = ID
-        y = self.labels[ID]
-
+        X = torch.LongTensor(ID)
+        y = self.labels[index]
+        y = torch.LongTensor(y)
         return X, y
