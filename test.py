@@ -13,6 +13,12 @@ output = 'out'
 random_seed = 7
 tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
 
+'''
+1. padding to end
+2. mask of loss so that only look at the generation part(excluding the input and padding)
+3. input: sen <cls> sen
+4. generation file, top k and top p sampling
+'''
 def __add_pad(list):
     res = [__sen_pad(sen) for sen in list]
     return res
@@ -86,10 +92,8 @@ if __name__ == '__main__':
             y = local_labels[1]
             outputs = model(x, labels=y)
             loss, logits = outputs[:2]
-            print(loss)
-            loss.backword()
+            loss.backward()
             optimizer.step()
-            sys.exit()
             # Model computations
 
         # Validation
