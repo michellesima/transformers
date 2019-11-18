@@ -7,6 +7,7 @@ from examples.run_generation import *
 import sys
 max_sen_len = 64
 random_seed = 7
+numepoch = 2
 
 '''
 1. 11/11/2019 12:09:44 - WARNING - transformers.tokenization_utils -   This tokenizer does not make use of special tokens. Input is returned with no modification.
@@ -17,18 +18,14 @@ a result of calling build_inputs_with_special_tokens, I think legitimate, but no
 
 def sample_seq(model, length, context, num_samples=1, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0,
                     is_xlnet=False, is_xlm_mlm=False, xlm_mask_token=None, xlm_lang=None, device='cpu'):
-    context = torch.tensor(context, dtype=torch.long, device=device)
+    context = torch.tensor(context, dtype=torch.long)
     generated = context
     res = torch.zeros((length, 64), dtype=torch.long)
     model.eval()
     with torch.no_grad():
         for i in range(length):
-            inputs = {'input_ids': generated[i]}
-
-            outputs = model(**inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet/CTRL (cached hidden-states)
-            tem = outputs[0]
+            outputs = model(input_ids=generated[i])  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet/CTRL (cached hidden-states)
             next_token_logits = outputs[0] / (temperature if temperature > 0 else 1.)
-
             filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
             if temperature == 0: #greedy sampling:
                 next_token = torch.argmax(filtered_logits).unsqueeze(0)
@@ -44,7 +41,8 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     args = {}
     args['n_ctx'] = max_sen_len
-    model = OpenAIGPTLMHeadModel.from_pretrained('savedmodels2')
+    modelpath = 'savedmodels' + str(numepoch)
+    model = OpenAIGPTLMHeadModel.from_pretrained(modelpath)
     # load saved tokenizer
     tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
     token_dict = {
@@ -81,7 +79,8 @@ def main():
     outdf['ori'] = orisen
     outdf['out'] = outlist
     print(outdf)
-    outdf.to_excel('gen_sen/epoch_tem1.xlsx')
+    savedfile = 'gen_sen/epoch_tem' + str(numepoch) + '.xlsx'
+    outdf.to_excel(savedfile)
 
 if __name__ == '__main__':
     main()

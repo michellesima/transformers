@@ -1,6 +1,7 @@
 from dataset import Dataset
 import pandas as pd
 import sys
+import subprocess
 
 sen_text = 'sen_text'
 agency = 'agency_cat'
@@ -9,6 +10,24 @@ output = 'out'
 max_sen_len = 64
 tokenizer = None
 
+
+def get_gpu_memory_map():
+    """Get the current gpu usage.
+    Returns
+    -------
+    usage: dict
+        Keys are device ids as integers.
+        Values are memory usage as integers in MB.
+    """
+    result = subprocess.check_output(
+        [
+            'nvidia-smi', '--query-gpu=memory.used',
+            '--format=csv,nounits,noheader'
+        ], encoding='utf-8')
+    # Convert lines into a dictionary
+    gpu_memory = [int(x) for x in result.strip().split('\n')]
+    gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
+    return gpu_memory_map
 
 def __add_pad(list):
     res = [__sen_pad(sen) for sen in list]
@@ -46,18 +65,16 @@ def make_dataset(df, tokenizerparam, maxlen, train_time=True):
         ser = pd.Series()
         cats = ['pos', 'equal', 'neg']
         for cat in cats:
-            catser = '<start> ' + df[sen_text] + ' <cls> ' + cat + ' <cls> '
+            catser = '<start> ' + df[sen_text] + ' <cls> <' + cat + '> <cls> '
             ser = ser.append(catser)
 
-        list_in = [tokenizer.encode(sen) for sen in ser]
+        list_in = [tokenizer.encode(sen, add_special_tokens=False) for sen in ser]
         list_in = __add_pad(list_in)
         return list_in, ser
     df[input] = '<start> ' + df[sen_text] + ' <cls> ' + df[agency] + ' <cls> '
     df[output] = df[sen_text] + ' <end>'
     df[input] = df[input] + df[output]
-    list_id = [tokenizer.encode(sen) for sen in df[input]]
+    list_id = [tokenizer.encode(sen, add_special_tokens=False) for sen in df[input]]
     list_id = __add_pad(list_id)
-    outsen = [tokenizer.encode(sen) for sen in df[output]]
-    outsen = __add_pad(outsen)
-    dataset = Dataset(list_IDs=list_id, labels=outsen)
+    dataset = Dataset(list_IDs=list_id)
     return dataset
