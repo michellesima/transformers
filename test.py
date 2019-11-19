@@ -76,7 +76,7 @@ if __name__ == '__main__':
         losssum = 0.0
         count = 0
         if not os.path.exists(savepath):
-            os.mkdirs(savepath)
+            os.mkdir(savepath)
         for local_batch, local_labels in enumerate(training_generator):
             # Transfer to GPUpri
             x = local_labels # b * s
