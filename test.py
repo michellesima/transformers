@@ -49,22 +49,21 @@ def __get_mask(x):
     return mask
 
 if __name__ == '__main__':
+    print(get_gpu_memory_map())
     # CUDA for PyTorch
     use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda:0" if use_cuda else "cpu")
+    device = torch.device("cpu")
     max_epochs = 10
-    use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda:0" if use_cuda else "cpu")
     # Load dataset, tokenizer, model from pretrained model/vocabulary
     pretrained_path = 'savedmodels' + str(numepoch - 1)
-    model = OpenAIGPTLMHeadModel.from_pretrained(pretrained_path)
-    summary(model, input_size=(4, 64, 40478), device='cpu')
-    sys.exit()
+    model = OpenAIGPTLMHeadModel.from_pretrained(pretrained_path) #model not on cuda
 
     train_ds= parse_data()
-    training_generator = data.DataLoader(train_ds, batch_size=batchsize, shuffle=True, pin_memory=True)
+    training_generator = data.DataLoader(train_ds, batch_size=batchsize, shuffle=True)
     param = model.parameters()
     optimizer = AdamW(param)
+
+    print(get_gpu_memory_map())
     model.to(device)
     ini = 0
     criteria = CrossEntropyLoss()

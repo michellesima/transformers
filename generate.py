@@ -10,9 +10,8 @@ random_seed = 7
 numepoch = 2
 
 '''
-1. 11/11/2019 12:09:44 - WARNING - transformers.tokenization_utils -   This tokenizer does not make use of special tokens. Input is returned with no modification.
-a result of calling build_inputs_with_special_tokens, I think legitimate, but not training time
-2. mask in test time? 
+not with generation time, since gpt model works
+loss decreasing
 
 '''
 
@@ -49,15 +48,13 @@ def main():
         'bos_token': '<start>',
         'eos_token': '<end>',
         'pad_token': '<pad>',
-        'cls_token': '<cls>'
+        'cls_token': '<cls>',
+        'additional_special_tokens': ['<pos>', '<neg>', '<equal>']
     }
     num_added_token = tokenizer.add_special_tokens(token_dict)
     # change to -> load saved dataset
-    data_df = pd.read_excel('data/agency_samples.xlsx')
-    newdf = data_df[[sen_text, agency]]
-    train_df = newdf.sample(frac=0.8, random_state=random_seed)
-    test_df = newdf[~newdf.isin(train_df)].dropna()
-    test_df = test_df.head(2)
+    test_df = pd.read_excel('data/train_df.xlsx')
+    test_df = test_df.head(20)
     # list of encoded sen
     test_dataset, orisen = make_dataset(test_df, tokenizer, max_sen_len, train_time=False)
     trial = test_dataset
