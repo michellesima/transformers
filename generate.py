@@ -3,27 +3,32 @@ import torch
 import pandas as pd
 from utils import *
 import torch.nn.functional as F
+from torch.nn import CrossEntropyLoss
 from examples.run_generation import *
 import sys
 max_sen_len = 64
 random_seed = 7
-numepoch = 2
+numepoch = 5
+use_cuda = torch.cuda.is_available()
+device = torch.device("cuda:1" if use_cuda else "cpu")
 
 '''
-not with generation time, since gpt model works
-loss decreasing
-
+1. apply attention mask for eval?
+2. after end token?
+3. bug: x not masked
 '''
-
 def sample_seq(model, length, context, num_samples=1, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0,
                     is_xlnet=False, is_xlm_mlm=False, xlm_mask_token=None, xlm_lang=None, device='cpu'):
     context = torch.tensor(context, dtype=torch.long)
     generated = context
+    criteria = CrossEntropyLoss()
     res = torch.zeros((length, 64), dtype=torch.long)
     model.eval()
+    model.to(device)
     with torch.no_grad():
         for i in range(length):
-            outputs = model(input_ids=generated[i])  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet/CTRL (cached hidden-states)
+            mask = get_mask(generated[i], 1)
+            outputs = model(input_ids=generated[i].to(device))  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet/CTRL (cached hidden-states)
             next_token_logits = outputs[0] / (temperature if temperature > 0 else 1.)
             filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
             if temperature == 0: #greedy sampling:
@@ -36,11 +41,9 @@ def sample_seq(model, length, context, num_samples=1, temperature=1, top_k=0, to
 
 
 def main():
-    use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda:0" if use_cuda else "cpu")
     args = {}
     args['n_ctx'] = max_sen_len
-    modelpath = 'savedmodels' + str(numepoch)
+    modelpath = './savedm/savedmodels' + str(numepoch)
     model = OpenAIGPTLMHeadModel.from_pretrained(modelpath)
     # load saved tokenizer
     tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
@@ -53,8 +56,7 @@ def main():
     }
     num_added_token = tokenizer.add_special_tokens(token_dict)
     # change to -> load saved dataset
-    test_df = pd.read_excel('data/train_df.xlsx')
-    test_df = test_df.head(20)
+    test_df = pd.read_excel('./data/test_df.xlsx')
     # list of encoded sen
     test_dataset, orisen = make_dataset(test_df, tokenizer, max_sen_len, train_time=False)
     trial = test_dataset
@@ -75,7 +77,6 @@ def main():
     outdf = pd.DataFrame()
     outdf['ori'] = orisen
     outdf['out'] = outlist
-    print(outdf)
     savedfile = 'gen_sen/epoch_tem' + str(numepoch) + '.xlsx'
     outdf.to_excel(savedfile)
 

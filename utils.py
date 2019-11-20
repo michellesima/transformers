@@ -1,6 +1,7 @@
 from dataset import Dataset
 import pandas as pd
 import sys
+import torch
 import subprocess
 
 sen_text = 'sen_text'
@@ -45,6 +46,33 @@ def __sen_pad(sen):
             sen.pop(len(sen) - 2)
     return sen
 
+def prepare_loss(x, outputs, mask, batchsize):
+    x = x[..., 1:] # get rid of start
+    logits = outputs[0] # batch size * senlen * v
+    logits = logits[..., :-1, :]
+    mask = mask[..., 1:]
+    logit_view = logits.contiguous().view(batchsize * (max_sen_len - 1), -1)
+    mask_view = mask.contiguous().view(-1)
+    x_view = x.contiguous().view(-1)
+    x_view = x_view.type(torch.FloatTensor)
+    masked_x = mask_view * x_view
+    for i in range(logit_view.size()[0]):
+        logit_view[i] = logit_view[i] * mask_view[i]
+    masked_x = masked_x.type(torch.LongTensor)
+    return logit_view, masked_x
+
+def get_mask(x, batchsize):
+    mask = torch.zeros((batchsize, max_sen_len))
+
+    cls_ind = ((x == tokenizer.cls_token_id).nonzero())
+    end_ind = ((x == tokenizer.eos_token_id).nonzero())
+    for i in range(batchsize):
+        # do not include the last cls token
+        startind = cls_ind[2 * i + 1][1] + 1
+        # include the eos token
+        endind = end_ind[i][1] + 1
+        mask[i][startind: endind] = torch.FloatTensor([1 for j in range(endind - startind)])
+    return mask
 
 def make_dataset(df, tokenizerparam, maxlen, train_time=True):
     '''

@@ -1,3 +1,4 @@
+pandas
 # progress bars in model download and training scripts
 tqdm
 # Accessing files from S3 directly.
