@@ -12,7 +12,7 @@ import sys
 random_seed = 7
 max_sen_len = 64
 batchsize = 4
-numepoch = 2
+numepoch = 1
 tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
 
 
@@ -33,17 +33,18 @@ def parse_data():
 
 if __name__ == '__main__':
     # CUDA for PyTorch
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    max_epochs = 5
+    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+    max_epochs = 1
     # Load dataset, tokenizer, model from pretrained model/vocabulary
     pretrained_path = './savedm/savedmodels' + str(numepoch - 1)
-    model = OpenAIGPTLMHeadModel.from_pretrained(pretrained_path) #model not on cuda
+    model = OpenAIGPTLMHeadModel.from_pretrained('openai-gpt') #model not on cuda
     train_ds, num_added= parse_data()
     model.resize_token_embeddings(tokenizer.vocab_size + num_added)
     training_generator = data.DataLoader(train_ds, batch_size=batchsize, shuffle=True)
     param = model.parameters()
     optimizer = AdamW(param)
     model.to(device)
+    print(get_gpu_memory_map())
     ini = 0
     criteria = CrossEntropyLoss()
     losses = []
@@ -60,10 +61,10 @@ if __name__ == '__main__':
             # Transfer to GPUpri
             optimizer.zero_grad()
             x = local_labels # b * s
-            mask = get_mask(x, batchsize)
-            outputs = model(x.to(device), attention_mask=mask.to(device))
-            logit_view, x_view = prepare_loss(x, outputs, mask, batchsize)
-            loss = criteria(logit_view.to(device), x_view.to(device))
+            label = get_label(x, batchsize)
+            outputs = model(x.to(device), labels=label.to(device))
+            loss, logits = outputs[:2]
+            print(loss)
             losssum += loss
             count += 1
             loss.backward()

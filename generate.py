@@ -8,9 +8,9 @@ from examples.run_generation import *
 import sys
 max_sen_len = 64
 random_seed = 7
-numepoch = 5
+numepoch = 1
 use_cuda = torch.cuda.is_available()
-device = torch.device("cuda:1" if use_cuda else "cpu")
+device = torch.device("cuda:2" if use_cuda else "cpu")
 
 '''
 1. apply attention mask for eval?
@@ -27,7 +27,6 @@ def sample_seq(model, length, context, num_samples=1, temperature=1, top_k=0, to
     model.to(device)
     with torch.no_grad():
         for i in range(length):
-            mask = get_mask(generated[i], 1)
             outputs = model(input_ids=generated[i].to(device))  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet/CTRL (cached hidden-states)
             next_token_logits = outputs[0] / (temperature if temperature > 0 else 1.)
             filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
@@ -57,6 +56,7 @@ def main():
     num_added_token = tokenizer.add_special_tokens(token_dict)
     # change to -> load saved dataset
     test_df = pd.read_excel('./data/test_df.xlsx')
+    test_df = test_df.head(20)
     # list of encoded sen
     test_dataset, orisen = make_dataset(test_df, tokenizer, max_sen_len, train_time=False)
     trial = test_dataset
@@ -79,6 +79,7 @@ def main():
     outdf['out'] = outlist
     savedfile = 'gen_sen/epoch_tem' + str(numepoch) + '.xlsx'
     outdf.to_excel(savedfile)
+    print(outdf.head())
 
 if __name__ == '__main__':
     main()

@@ -46,33 +46,19 @@ def __sen_pad(sen):
             sen.pop(len(sen) - 2)
     return sen
 
-def prepare_loss(x, outputs, mask, batchsize):
-    x = x[..., 1:] # get rid of start
-    logits = outputs[0] # batch size * senlen * v
-    logits = logits[..., :-1, :]
-    mask = mask[..., 1:]
-    logit_view = logits.contiguous().view(batchsize * (max_sen_len - 1), -1)
-    mask_view = mask.contiguous().view(-1)
-    x_view = x.contiguous().view(-1)
-    x_view = x_view.type(torch.FloatTensor)
-    masked_x = mask_view * x_view
-    for i in range(logit_view.size()[0]):
-        logit_view[i] = logit_view[i] * mask_view[i]
-    masked_x = masked_x.type(torch.LongTensor)
-    return logit_view, masked_x
-
-def get_mask(x, batchsize):
-    mask = torch.zeros((batchsize, max_sen_len))
+def get_label(x, batchsize):
+    label = x.clone()
 
     cls_ind = ((x == tokenizer.cls_token_id).nonzero())
     end_ind = ((x == tokenizer.eos_token_id).nonzero())
     for i in range(batchsize):
         # do not include the last cls token
-        startind = cls_ind[2 * i + 1][1] + 1
+        startind = cls_ind[i][1] + 2
         # include the eos token
         endind = end_ind[i][1] + 1
-        mask[i][startind: endind] = torch.FloatTensor([1 for j in range(endind - startind)])
-    return mask
+        label[i][0:startind] = torch.FloatTensor([-1 for _ in range(startind)])
+        label[i][endind:] = torch.FloatTensor([-1 for _ in range(max_sen_len - endind)])
+    return label
 
 def make_dataset(df, tokenizerparam, maxlen, train_time=True):
     '''
@@ -93,13 +79,13 @@ def make_dataset(df, tokenizerparam, maxlen, train_time=True):
         ser = pd.Series()
         cats = ['pos', 'equal', 'neg']
         for cat in cats:
-            catser = '<start> ' + df[sen_text] + ' <cls> <' + cat + '> <cls> '
+            catser = '<start> ' + df[sen_text] + ' <cls> <' + cat + '> '
             ser = ser.append(catser)
 
         list_in = [tokenizer.encode(sen, add_special_tokens=False) for sen in ser]
         list_in = __add_pad(list_in)
         return list_in, ser
-    df[input] = '<start> ' + df[sen_text] + ' <cls> ' + df[agency] + ' <cls> '
+    df[input] = '<start> ' + df[sen_text] + ' <cls> <' + df[agency] + '> '
     df[output] = df[sen_text] + ' <end>'
     df[input] = df[input] + df[output]
     list_id = [tokenizer.encode(sen, add_special_tokens=False) for sen in df[input]]
