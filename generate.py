@@ -12,11 +12,6 @@ numepoch = 1
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda:2" if use_cuda else "cpu")
 
-'''
-1. apply attention mask for eval?
-2. after end token?
-3. bug: x not masked
-'''
 def sample_seq(model, length, context, num_samples=1, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0,
                     is_xlnet=False, is_xlm_mlm=False, xlm_mask_token=None, xlm_lang=None, device='cpu'):
     context = torch.tensor(context, dtype=torch.long)
@@ -78,8 +73,9 @@ def main():
     outdf['ori'] = orisen
     outdf['out'] = outlist
     savedfile = 'gen_sen/epoch_tem' + str(numepoch) + '.xlsx'
+    outdf = regroup_df(outdf)
     outdf.to_excel(savedfile)
-    print(outdf.head())
+    print(outdf['out_sen'].head())
 
 if __name__ == '__main__':
     main()

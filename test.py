@@ -15,7 +15,10 @@ batchsize = 4
 numepoch = 1
 tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
 
-
+'''
+problem with training
+use label = x, loss = 2, but 
+'''
 
 def parse_data():
     token_dict = {
@@ -59,16 +62,15 @@ if __name__ == '__main__':
             os.mkdir(savepath)
         for local_batch, local_labels in enumerate(training_generator):
             # Transfer to GPUpri
-            optimizer.zero_grad()
             x = local_labels # b * s
             label = get_label(x, batchsize)
-            outputs = model(x.to(device), labels=label.to(device))
+            outputs = model(x.to(device), labels=x.to(device).clone())
             loss, logits = outputs[:2]
-            print(loss)
             losssum += loss
             count += 1
             loss.backward()
             optimizer.step()
+            optimizer.zero_grad()
             # Model computations
         avg = losssum / count
         print(epoch)

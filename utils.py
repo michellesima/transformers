@@ -11,6 +11,15 @@ output = 'out'
 max_sen_len = 64
 tokenizer = None
 
+def regroup_df(df):
+    outdf = df['out'].str.split(pat='<end>', n=1, expand=True)
+    newdf = df['ori'].str.split(pat='<cls>', n=1, expand=True)
+    newdf.columns = ['sen', 'cat']
+    newdf['outbe'] = outdf[0]
+    newdf['cat'] = newdf['cat'].str.replace(' <cls>', '')
+    newdf['out_sen'] = df['out']
+    newdf = newdf.sort_values(by='sen')
+    return newdf
 
 def get_gpu_memory_map():
     """Get the current gpu usage.
