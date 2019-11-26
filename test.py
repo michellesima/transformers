@@ -37,7 +37,7 @@ def parse_data():
 if __name__ == '__main__':
     # CUDA for PyTorch
     device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
-    max_epochs = 1
+    max_epochs = 10
     # Load dataset, tokenizer, model from pretrained model/vocabulary
     pretrained_path = './savedm/savedmodels' + str(numepoch - 1)
     model = OpenAIGPTLMHeadModel.from_pretrained('openai-gpt') #model not on cuda

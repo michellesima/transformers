@@ -8,7 +8,7 @@ from examples.run_generation import *
 import sys
 max_sen_len = 64
 random_seed = 7
-numepoch = 1
+numepoch = 10
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda:2" if use_cuda else "cpu")
 
@@ -37,8 +37,7 @@ def sample_seq(model, length, context, num_samples=1, temperature=1, top_k=0, to
 def main():
     args = {}
     args['n_ctx'] = max_sen_len
-    modelpath = './savedm/savedmodels' + str(numepoch)
-    model = OpenAIGPTLMHeadModel.from_pretrained(modelpath)
+
     # load saved tokenizer
     tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
     token_dict = {
@@ -55,27 +54,29 @@ def main():
     # list of encoded sen
     test_dataset, orisen = make_dataset(test_df, tokenizer, max_sen_len, train_time=False)
     trial = test_dataset
-    out = sample_seq(
-        model=model,
-        context=trial,
-        length=len(trial),
-        top_p=0.9,
-        is_xlnet=False,
-        device=device
-    )
-    outlist = []
+    for i in range(numepoch):
+        modelpath = './savedm/savedmodels' + str(i + 1)
+        model = OpenAIGPTLMHeadModel.from_pretrained(modelpath)
+        out = sample_seq(
+            model=model,
+            context=trial,
+            length=len(trial),
+            top_p=0.9,
+            is_xlnet=False,
+            device=device
+        )
+        outlist = []
 
-    for senind in range(out.size()[0]):
-        text = tokenizer.decode(out[senind].tolist(), clean_up_tokenization_spaces=True, skip_special_tokens=True)
-        outlist.append(text)
-    out_ser = pd.Series(data=outlist, dtype=str)
-    outdf = pd.DataFrame()
-    outdf['ori'] = orisen
-    outdf['out'] = outlist
-    savedfile = 'gen_sen/epoch_tem' + str(numepoch) + '.xlsx'
-    outdf = regroup_df(outdf)
-    outdf.to_excel(savedfile)
-    print(outdf['out_sen'].head())
+        for senind in range(out.size()[0]):
+            text = tokenizer.decode(out[senind].tolist(), clean_up_tokenization_spaces=True, skip_special_tokens=True)
+            outlist.append(text)
+        out_ser = pd.Series(data=outlist, dtype=str)
+        outdf = pd.DataFrame()
+        outdf['ori'] = orisen
+        outdf['out'] = outlist
+        outdf = regroup_df(outdf)
+        savedfile = 'gen_sen/epoch_tem' + str(i + 1) + '.xlsx'
+        outdf.to_excel(savedfile)
 
 if __name__ == '__main__':
     main()
