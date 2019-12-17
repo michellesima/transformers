@@ -31,7 +31,9 @@ def parse_data():
     num_added_token = tokenizer.add_special_tokens(token_dict)
     train_df = pd.read_excel('./data/train_df.xlsx')
     train_dataset = make_dataset(train_df, tokenizer, max_sen_len)
-    return train_dataset, num_added_token
+    dev_df = pd.read_excel('./data/dev_df.xlsx')
+    dev_dataset = make_dataset(dev_df, tokenizer, max_sen_len)
+    return train_dataset, dev_dataset, num_added_token
 
 
 if __name__ == '__main__':
@@ -39,18 +41,18 @@ if __name__ == '__main__':
     device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
     max_epochs = 10
     # Load dataset, tokenizer, model from pretrained model/vocabulary
-    pretrained_path = './savedm/savedmodels' + str(numepoch - 1)
     model = OpenAIGPTLMHeadModel.from_pretrained('openai-gpt') #model not on cuda
-    train_ds, num_added= parse_data()
+    train_ds, dev_ds, num_added= parse_data()
     model.resize_token_embeddings(tokenizer.vocab_size + num_added)
     training_generator = data.DataLoader(train_ds, batch_size=batchsize, shuffle=True)
+    dev_generator = data.DataLoader(dev_ds, batch_size = batchsize, shuffle=False)
     param = model.parameters()
-    optimizer = AdamW(param)
+    optimizer = AdamW(param, lr=1.5e-4)
     model.to(device)
     print(get_gpu_memory_map())
     ini = 0
     criteria = CrossEntropyLoss()
-    losses = []
+    train_losses = []
     # Loop over epochs
     for epoch in range(max_epochs):
         # Training
@@ -64,7 +66,7 @@ if __name__ == '__main__':
             # Transfer to GPUpri
             x = local_labels # b * s
             label = get_label(x, batchsize)
-            outputs = model(x.to(device), labels=x.to(device).clone())
+            outputs = model(x.to(device), labels=label.to(device))
             loss, logits = outputs[:2]
             losssum += loss
             count += 1
@@ -75,10 +77,11 @@ if __name__ == '__main__':
         avg = losssum / count
         print(epoch)
         model.save_pretrained(savepath)
-        losses.append(avg)
-    loss_file = 'loss.txt'
-    with open(loss_file, 'w') as f:
-        f.write(str(losses))
+        train_losses.append(avg)
+
+    loss_df = pd.DataFrame()
+    loss_df["train_loss"] = train_losses
+    loss_df.to_excel('loss.xlsx')
 
 
 

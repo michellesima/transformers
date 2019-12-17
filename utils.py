@@ -18,6 +18,7 @@ def regroup_df(df):
     newdf['outbe'] = outdf[0]
     newdf['cat'] = newdf['cat'].str.replace(' <cls>', '')
     newdf['out_sen'] = df['out']
+    newdf['ori_cat'] = df['ori_cat']
     newdf = newdf.sort_values(by='sen')
     return newdf
 
@@ -86,14 +87,16 @@ def make_dataset(df, tokenizerparam, maxlen, train_time=True):
     df[agency] = df[agency].str.strip()
     if not train_time:
         ser = pd.Series()
+        ser_ori_cat = pd.Series()
         cats = ['pos', 'equal', 'neg']
         for cat in cats:
             catser = '<start> ' + df[sen_text] + ' <cls> <' + cat + '> '
             ser = ser.append(catser)
+            ser_ori_cat = ser_ori_cat.append(df[agency])
 
         list_in = [tokenizer.encode(sen, add_special_tokens=False) for sen in ser]
         list_in = __add_pad(list_in)
-        return list_in, ser
+        return list_in, ser, ser_ori_cat
     df[input] = '<start> ' + df[sen_text] + ' <cls> <' + df[agency] + '> '
     df[output] = df[sen_text] + ' <end>'
     df[input] = df[input] + df[output]
