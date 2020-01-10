@@ -12,6 +12,12 @@ numepoch = 10
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda:2" if use_cuda else "cpu")
 
+def repeatN(list, n):
+    ori = list
+    for _ in range(n):
+        list = list.append(ori, ignore_index=True)
+    return list
+
 
 def main():
     args = {}
@@ -28,36 +34,52 @@ def main():
     }
     num_added_token = tokenizer.add_special_tokens(token_dict)
     # change to -> load saved dataset
-    test_df = pd.read_excel('./data/test_df.xlsx')
-    test_df = test_df.head(10)
+    test_df = pd.read_csv('./data/parads/senp_bs_dev.zip')
+    test_df = test_df.sample(n=50)
     # list of encoded sen
-    test_dataset, orisen, ser_ori_cat = make_dataset(test_df, tokenizer, max_sen_len, train_time=False)
-    for i in range(numepoch):
-        modelpath = './savedm/savedmodels' + str(i + 1)
+    test_dataset, orisen, ser_ori_cat = make_dataset_para(test_df, tokenizer, max_sen_len, train_time=False)
+    ps = [0.4, 0.6, 0.8, 0.9]
+    orisen = repeatN(orisen, len(ps) - 1)
+    ser_ori_cat = repeatN(ser_ori_cat, len(ps) - 1)
+    finaldf = pd.DataFrame()
+    for mind in range(1, 26):
+        modelpath = './savedm/savedmodels' + str(mind)
         model = OpenAIGPTLMHeadModel.from_pretrained(modelpath)
         model.to(device)
+        model.eval()
         outlist = []
-        for context_tokens in test_dataset:
-            out = sample_sequence(
-                model=model,
-                context=context_tokens,
-                length=20,
-                top_p=0.9,
-                is_xlnet=False,
-                device=device
-            )
-            out = out[0, len(context_tokens):].tolist()
-            text = tokenizer.decode(out, clean_up_tokenization_spaces=True, skip_special_tokens=True)
-            outlist.append(text)
+        outp = []
+        for i in ps:
+            for context_tokens in test_dataset:
+                out = sample_sequence(
+                    model=model,
+                    context=context_tokens,
+                    length=15,
+                    top_p=i,
+                    is_xlnet=False,
+                    device=device,
+                    repetition_penalty = 3
+                )
+                out = out[0, len(context_tokens):].tolist()
+                text = tokenizer.decode(out, clean_up_tokenization_spaces=True, skip_special_tokens=False)
+                end_ind = text.find('<end>')
+                if end_ind >= 0:
+                    text = text[0: end_ind]
 
-        out_ser = pd.Series(data=outlist, dtype=str)
+                outlist.append(text)
+                outp.append(i)
+
         outdf = pd.DataFrame()
-        outdf['ori'] = orisen
-        outdf['ori_cat'] = ser_ori_cat
+
+        outdf['ori'] = orisen.tolist()
+        outdf['ori_cat'] = ser_ori_cat.tolist()
         outdf['out'] = outlist
+        outdf['p-value'] = outp
         outdf = regroup_df(outdf)
-        savedfile = 'gen_sen/epoch_tem' + str(i + 1) + '.xlsx'
-        outdf.to_excel(savedfile)
+        outdf['modelind'] = mind
+        finaldf = finaldf.append(outdf, ignore_index=True)
+    savedfile = 'gen_sen/res_sen.xlsx'
+    finaldf.to_excel(savedfile)
 
 if __name__ == '__main__':
     main()

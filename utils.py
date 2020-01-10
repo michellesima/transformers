@@ -18,8 +18,9 @@ def regroup_df(df):
     newdf['outbe'] = outdf[0]
     newdf['cat'] = newdf['cat'].str.replace(' <cls>', '')
     newdf['out_sen'] = df['out']
+    newdf['p-value'] = df['p-value']
     newdf['ori_cat'] = df['ori_cat']
-    newdf = newdf.sort_values(by='sen')
+    newdf = newdf.sort_values(by=['sen', 'p-value'])
     return newdf
 
 def get_gpu_memory_map():
@@ -69,6 +70,28 @@ def get_label(x, batchsize):
         label[i][0:startind] = torch.FloatTensor([-1 for _ in range(startind)])
         label[i][endind:] = torch.FloatTensor([-1 for _ in range(max_sen_len - endind)])
     return label
+
+def make_dataset_para(df, tokenizerparam, maxlen, train_time=True):
+    global tokenizer
+    tokenizer = tokenizerparam
+    if not train_time:
+        ser = pd.Series()
+        ser_ori_cat = pd.Series()
+        cats = ['pos', 'equal', 'neg']
+        for cat in cats:
+            catser = '<start> ' + df['sen0'] + ' <cls> <' + cat + '> '
+            ser = ser.append(catser)
+            ser_ori_cat = ser_ori_cat.append(df['agen_cat0'])
+        list_in = [tokenizer.encode(sen, add_special_tokens=False) for sen in ser]
+        list_in = __add_pad(list_in)
+        return list_in, ser, ser_ori_cat
+    df[input] = '<start> ' + df['sen0'] + ' <cls> <' + df['agen_cat1'] + \
+        '> ' + df['sen1'] + ' <end>'
+    list_id = [tokenizer.encode(sen, add_special_tokens=False) for sen in df[input]]
+    list_id = __add_pad(list_id)
+    dataset = Dataset(list_IDs=list_id)
+    return dataset
+
 
 def make_dataset(df, tokenizerparam, maxlen, train_time=True):
     '''

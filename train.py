@@ -29,11 +29,9 @@ def parse_data():
         'additional_special_tokens': ['<pos>', '<neg>', '<equal>']
     }
     num_added_token = tokenizer.add_special_tokens(token_dict)
-    train_df = pd.read_excel('./data/train_df.xlsx')
-    train_dataset = make_dataset(train_df, tokenizer, max_sen_len)
-    dev_df = pd.read_excel('./data/dev_df.xlsx')
-    dev_dataset = make_dataset(dev_df, tokenizer, max_sen_len)
-    return train_dataset, dev_dataset, num_added_token
+    train_df = pd.read_csv('./data/parads/senp_bs_train.zip')
+    train_dataset = make_dataset_para(train_df, tokenizer, max_sen_len)
+    return train_dataset, num_added_token
 
 
 if __name__ == '__main__':
@@ -42,12 +40,11 @@ if __name__ == '__main__':
     max_epochs = 10
     # Load dataset, tokenizer, model from pretrained model/vocabulary
     model = OpenAIGPTLMHeadModel.from_pretrained('openai-gpt') #model not on cuda
-    train_ds, dev_ds, num_added= parse_data()
+    train_ds, num_added= parse_data()
     model.resize_token_embeddings(tokenizer.vocab_size + num_added)
     training_generator = data.DataLoader(train_ds, batch_size=batchsize, shuffle=True)
-    dev_generator = data.DataLoader(dev_ds, batch_size = batchsize, shuffle=False)
     param = model.parameters()
-    optimizer = AdamW(param, lr=1.5e-4)
+    optimizer = AdamW(param, lr=5e-5)
     model.to(device)
     print(get_gpu_memory_map())
     ini = 0

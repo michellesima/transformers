@@ -137,7 +137,9 @@ def sample_sequence(model, length, context, num_samples=1, temperature=1, top_k=
 
             outputs = model(**inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet/CTRL (cached hidden-states)
             next_token_logits = outputs[0][0, -1, :] / (temperature if temperature > 0 else 1.)
-
+            # decrease the prob for period for the first three words
+            if _ < 3:
+                next_token_logits[1] /= 100
             # reptition penalty from CTRL (https://arxiv.org/abs/1909.05858)
             for _ in set(generated.view(-1).tolist()):
                 next_token_logits[_] /= repetition_penalty

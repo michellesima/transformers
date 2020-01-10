@@ -29,25 +29,22 @@ def parse_data():
         'additional_special_tokens': ['<pos>', '<neg>', '<equal>']
     }
     num_added_token = tokenizer.add_special_tokens(token_dict)
-    train_df = pd.read_excel('./data/train_df.xlsx')
-    train_dataset = make_dataset(train_df, tokenizer, max_sen_len)
-    dev_df = pd.read_excel('./data/dev_df.xlsx')
-    dev_dataset = make_dataset(dev_df, tokenizer, max_sen_len)
-    return train_dataset, dev_dataset, num_added_token
+    dev_df = pd.read_csv('./data/parads/senp_bs_dev.zip')
+    dev_dataset = make_dataset_para(dev_df, tokenizer, max_sen_len)
+    return dev_dataset, num_added_token
 
 
 if __name__ == '__main__':
     # CUDA for PyTorch
     device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
-    max_epochs = 10
+    max_epochs = 25
     # Load dataset, tokenizer, model from pretrained model/vocabulary
-    train_ds, dev_ds, num_added= parse_data()
-    training_generator = data.DataLoader(train_ds, batch_size=batchsize, shuffle=True)
+    dev_ds, num_added= parse_data()
     dev_generator = data.DataLoader(dev_ds, batch_size = batchsize, shuffle=True)
     ini = 0
     train_losses = []
     # Loop over epochs
-    for epoch in range(max_epochs):
+    for epoch in range(19, max_epochs):
         # Training
         savepath = './savedm/savedmodels' + str(numepoch + epoch)
         model = OpenAIGPTLMHeadModel.from_pretrained(savepath)
