@@ -44,7 +44,7 @@ if __name__ == '__main__':
     ini = 0
     train_losses = []
     # Loop over epochs
-    for epoch in range(19, max_epochs):
+    for epoch in range(10):
         # Training
         savepath = './savedm/savedmodels' + str(numepoch + epoch)
         model = OpenAIGPTLMHeadModel.from_pretrained(savepath)

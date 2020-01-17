@@ -12,14 +12,14 @@ max_sen_len = 64
 tokenizer = None
 
 def regroup_df(df):
-    outdf = df['out'].str.split(pat='<end>', n=1, expand=True)
     newdf = df['ori'].str.split(pat='<cls>', n=1, expand=True)
     newdf.columns = ['sen', 'cat']
-    newdf['outbe'] = outdf[0]
     newdf['cat'] = newdf['cat'].str.replace(' <cls>', '')
     newdf['out_sen'] = df['out']
     newdf['p-value'] = df['p-value']
     newdf['ori_cat'] = df['ori_cat']
+    if 'para_sen' in df.columns:
+        newdf['para_sen'] = df['para_sen']
     newdf = newdf.sort_values(by=['sen', 'p-value'])
     return newdf
 
@@ -77,14 +77,16 @@ def make_dataset_para(df, tokenizerparam, maxlen, train_time=True):
     if not train_time:
         ser = pd.Series()
         ser_ori_cat = pd.Series()
+        ser_para_sen = pd.Series()
         cats = ['pos', 'equal', 'neg']
         for cat in cats:
             catser = '<start> ' + df['sen0'] + ' <cls> <' + cat + '> '
             ser = ser.append(catser)
             ser_ori_cat = ser_ori_cat.append(df['agen_cat0'])
+            ser_para_sen = ser_para_sen.append(df['sen1'], ignore_index=True)
         list_in = [tokenizer.encode(sen, add_special_tokens=False) for sen in ser]
         list_in = __add_pad(list_in)
-        return list_in, ser, ser_ori_cat
+        return list_in, ser, ser_ori_cat, ser_para_sen
     df[input] = '<start> ' + df['sen0'] + ' <cls> <' + df['agen_cat1'] + \
         '> ' + df['sen1'] + ' <end>'
     list_id = [tokenizer.encode(sen, add_special_tokens=False) for sen in df[input]]

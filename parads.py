@@ -3,7 +3,8 @@ import pandas as pd
 if __name__ == '__main__':
     randind = 7
     df = pd.read_csv('./data/parads/senp_bs.zip')
-    train = df.sample(n=40000, random_state=randind)
+    print(len(df.index))
+    train = df.sample(n=45000, random_state=randind)
     df = df.drop(train.index)
     test = df.sample(n=10000, random_state=randind)
     dev = df.drop(test.index)

@@ -44,7 +44,7 @@ if __name__ == '__main__':
     model.resize_token_embeddings(tokenizer.vocab_size + num_added)
     training_generator = data.DataLoader(train_ds, batch_size=batchsize, shuffle=True)
     param = model.parameters()
-    optimizer = AdamW(param, lr=5e-5)
+    optimizer = AdamW(param, lr=5e-6)
     model.to(device)
     print(get_gpu_memory_map())
     ini = 0
