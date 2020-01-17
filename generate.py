@@ -112,7 +112,6 @@ def gen_para(mind):
 def main(ds, mind):
     args = {}
     args['n_ctx'] = max_sen_len
-
     # load saved tokenizer
 
     # change to -> load saved dataset
