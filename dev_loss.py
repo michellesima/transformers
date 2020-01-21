@@ -4,7 +4,7 @@ import pandas as pd
 from utils import *
 from torch.utils import data
 from torch.nn import CrossEntropyLoss
-import os
+import os.path
 from torchsummary import summary
 import torch.optim as optim
 import sys
@@ -30,13 +30,12 @@ def parse_data():
     }
     num_added_token = tokenizer.add_special_tokens(token_dict)
     dev_df = pd.read_csv('./data/parads/senp_bs_dev.zip')
-    dev_dataset = make_dataset_para(dev_df, tokenizer, max_sen_len)
+    dev_dataset,df = make_dataset_para(dev_df)
     return dev_dataset, num_added_token
 
 
 if __name__ == '__main__':
     # CUDA for PyTorch
-    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
     max_epochs = 25
     # Load dataset, tokenizer, model from pretrained model/vocabulary
     dev_ds, num_added= parse_data()
@@ -47,6 +46,8 @@ if __name__ == '__main__':
     for epoch in range(10):
         # Training
         savepath = './savedm/savedmodels' + str(numepoch + epoch)
+        if not os.path.exists(savepath):
+            break
         model = OpenAIGPTLMHeadModel.from_pretrained(savepath)
         model.to(device)
         model.eval()
@@ -54,9 +55,8 @@ if __name__ == '__main__':
         count = 0
         for local_batch, local_labels in enumerate(dev_generator):
             # Transfer to GPUpri
-            x = local_labels # b * s
-            label = get_label(x, batchsize)
-            outputs = model(x.to(device), labels=label.to(device))
+            x, label, tt_ids = parse_model_inputs(local_labels)
+            outputs = model(x.to(device), labels=label.to(device),token_type_ids=tt_ids)
             loss, logits = outputs[:2]
             losssum += loss
             count += 1
