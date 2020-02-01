@@ -18,7 +18,6 @@ TRAIN_FILE = './data/train_df.xlsx'
 DEV_FILE = './data/test_df.xlsx'
 
 max_sen_len = 64
-tokenizer = None
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
 token_dict = {
@@ -31,10 +30,10 @@ num_added_token = tokenizer.add_special_tokens(token_dict)
 
 
 def agen_varbs():
-    df = pd.read_csv('~/resources/lexica/CONNOTATION/agen_verbs.csv')
+    df = pd.read_csv('~/resources/lexica/CONNOTATION/agency_verb.csv')
     agen_v = {}
     cats = {'+': 'pos', '-':'neg', '=':'equal'}
-    for k, v in cats:
+    for k, v in cats.items():
         subdf = df[df['Agency{agent}_Label'] == k]
         agen_v[v] = set(subdf['verb'].tolist())
     return agen_v
@@ -65,7 +64,7 @@ def get_gpu_memory_map():
     gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
     return gpu_memory_map
 
-def __add_pad(list):
+def add_pad(list):
     res = [__sen_pad(sen) for sen in list]
     return res
 
@@ -125,13 +124,13 @@ def make_dataset_para(df, train_time=True):
     else:
         df[input] = '<start> ' + df['sen0'] + ' ' + df['sen1'] + ' <end>'
     list_id = [tokenizer.encode(sen, add_special_tokens=False) for sen in df[input]]
-    list_id = __add_pad(list_id)
+    list_id = add_pad(list_id)
     df['agen_cat1'] = '<' + df['agen_cat1'] + '>'
     dataset = Dataset(list_IDs=list_id, list_len=df['source_len'].tolist(), agen_list=df['agen_cat1'].tolist())
     return dataset, df
 
 
-def make_dataset(df, maxlen, train_time=True):
+def make_dataset(df, train_time=True):
     '''
     :param df: the dataframe
     :param tokenizerparam: the tokenizer
@@ -139,7 +138,6 @@ def make_dataset(df, maxlen, train_time=True):
     :param train_time:
     :return: the tokenized dataset to put into data loader
     '''
-    max_sen_len = maxlen
     df[sen_text] = df[sen_text].astype(str)
     df[sen_text] = df[sen_text].str.strip()
     df[agency] = df[agency].astype(str)
@@ -154,12 +152,12 @@ def make_dataset(df, maxlen, train_time=True):
             ser_ori_cat = ser_ori_cat.append(df[agency])
 
         list_in = [tokenizer.encode(sen, add_special_tokens=False) for sen in ser]
-        list_in = __add_pad(list_in)
+        list_in = add_pad(list_in)
         return list_in, ser, ser_ori_cat
     df[input] = '<start> ' + df[sen_text] + ' <cls> <' + df[agency] + '> '
     df[output] = df[sen_text] + ' <end>'
     df[input] = df[input] + df[output]
     list_id = [tokenizer.encode(sen, add_special_tokens=False) for sen in df[input]]
-    list_id = __add_pad(list_id)
+    list_id = add_pad(list_id)
     dataset = Dataset(list_IDs=list_id)
     return dataset
