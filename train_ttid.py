@@ -1,22 +1,35 @@
+import torch
 from transformers import *
-import sys
-from torch.nn import CrossEntropyLoss
+import pandas as pd
 from utils import *
-from torch import utils
-from utils_dr import *
+from torch.utils import data
+from torch.nn import CrossEntropyLoss
+import os
+from torchsummary import summary
+import torch.optim as optim
+import sys
 
-def train(path='openai-gpt', mind=0):
-    print(get_gpu_memory_map())
+random_seed = 7
+batchsize = 1
+numepoch = 1
+
+def parse_data():
+
+    train_df = pd.read_csv('./data/parads/senp_bs_train.zip')
+    train_dataset, df = make_dataset_para(train_df)
+    return train_dataset, num_added_token
+
+def train(path='openai-gpt', mind=0, mode='w'):
     max_epochs = 10
     # Load dataset, tokenizer, model from pretrained model/vocabulary
-    train_ds= parse_file_dr(TRAIN_DR)
     model = OpenAIGPTLMHeadModel.from_pretrained(path) #model not on cuda
+    train_ds, num_added= parse_data()
     if path == 'openai-gpt':
-        model.resize_token_embeddings(tokenizer.vocab_size + num_added_token_dr)
-    training_generator = utils.data.DataLoader(train_ds, batch_size=batchsize_dr, shuffle=True)
+        model.resize_token_embeddings(tokenizer.vocab_size + num_added)
+    training_generator = data.DataLoader(train_ds, batch_size=batchsize, shuffle=True)
     param = model.parameters()
-    optimizer = AdamW(param, lr=1e-6)
-    model.to(device_dr)
+    optimizer = AdamW(param, lr=5e-6)
+    model.to(device)
     ini = 0
     criteria = CrossEntropyLoss()
     train_losses = []
@@ -31,8 +44,8 @@ def train(path='openai-gpt', mind=0):
             os.mkdir(savepath)
         for local_batch, local_labels in enumerate(training_generator):
             # Transfer to GPUpri
-            x, label = parse_model_inputs_dr(local_labels)
-            outputs = model(x.to(device_dr), labels=label.to(device_dr))
+            x, label, tt_ids = parse_model_inputs(local_labels)
+            outputs = model(x.to(device), labels=label.to(device))
             loss, logits = outputs[:2]
             losssum += loss
             count += 1
@@ -49,11 +62,17 @@ def train(path='openai-gpt', mind=0):
 
         loss_df = pd.DataFrame()
         loss_df["train_loss"] = train_losses
-        loss_df.to_excel('loss.xlsx')
+        loss_df.to_csv('loss.csv', mode=mode)
+
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         train()
     else:
         model = './savedm/savedmodels' + sys.argv[1]
-        train(model, int(sys.argv[1]))
+        train(model, int(sys.argv[1]), mode='a')
+
+
+
+
+

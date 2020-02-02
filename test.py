@@ -1,12 +1,14 @@
-import os, operator, sys
-dirpath = os.path.abspath(sys.argv[1])
-# make a generator for all file paths within dirpath
-all_files = ( os.path.join(basedir, filename) for basedir, dirs, files in os.walk(dirpath) for filename in files   )
+from gensim.models.keyedvectors import KeyedVectors
+from utils import *
+import sys
 
-sorted_files = sorted(all_files, key = os.path.getsize)
+#glove_model = KeyedVectors.load_word2vec_format("gensim_glove_vectors.txt", binary=False)
 
-# make a generator for tuples of file path and size: ('/Path/to/the.file', 1024)
-files_and_sizes = ( (path, os.path.getsize(path)) for path in all_files )
-sorted_files_with_size = sorted( files_and_sizes, key = operator.itemgetter(1) )
-for f in sorted_files:
-    print(os.path.getsize(f))
+if __name__ == '__main__':
+    agenv = agen_verbs()
+    sys.exit()
+    verb = sys.argv[1]
+    for cat, verbset in agenv.items():
+        
+        verb_simi = glove_model.most_similar_to_given(verb, verbset)
+        print(verb_simi)
