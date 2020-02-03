@@ -1,5 +1,6 @@
 from dataset import Dataset
 import pandas as pd
+from gensim.models.keyedvectors import KeyedVectors
 import sys
 import csv
 import spacy
@@ -18,7 +19,7 @@ TEST_DR = 'data/parads/test_dr.csv'
 
 batchsize_dr = 4
 device_dr = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+agency_cats = ['<pos>', '<neg>', '<equal>']
 
 tokenizer_dr = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
 token_dict_dr = {
@@ -26,9 +27,47 @@ token_dict_dr = {
     'eos_token': '<end>',
     'pad_token': '<pad>',
     'sep_token': '<sep>',
-    'additional_special_tokens': ['<pos>', '<neg>', '<equal>']
+    'additional_special_tokens': agency_cats
 }
 num_added_token_dr = tokenizer_dr.add_special_tokens(token_dict_dr)
+
+def simi_each_word(verb, agenv, vcat, glove_model):
+    res = []
+    res.append(verb)
+    res.append(vcat)
+    if verb not in glove_model:
+        res.append('none')
+        res.append('none')
+        res.append('none')
+        return res
+    for cat in agency_cats:
+        cat = cat[1: len(cat)-1]
+        verbset = agenv[cat]
+        verbset = list(filter(lambda v: v in glove_model, verbset)) 
+        if verb in verbset:
+            verbset.remove(verb)
+        verb_simi = glove_model.most_similar_to_given(verb, verbset)
+        res.append(verb_simi)
+    return res
+
+def simi_verb_each_cat():
+    '''
+    for each word, get its most similar word in each cat from glove emb
+    both word and its simi words are supposed to be in infinitive form
+    but 721 words cannot get infi form
+    '''
+    # cat -> infi form of words
+    agenv = agen_verbs()
+    df = pd.DataFrame()
+    glove_model = KeyedVectors.load_word2vec_format("gensim_glove_vectors.txt", binary=False)
+    vs_col = ['verb', 'oricat']
+    vs_col.extend(agency_cats)
+    for cat, verbset in agenv.items():
+        data = [simi_each_word(v, agenv, cat, glove_model) for v in verbset]
+        catdf = pd.DataFrame(data, columns=vs_col)
+        df = df.append(catdf)
+    df.to_csv('verb2simi.csv')
+
 
 def sen_in(sen, train_time=True):
     sen = sen[1]

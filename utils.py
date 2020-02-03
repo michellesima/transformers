@@ -1,15 +1,28 @@
 import pandas as pd
+from nltk.stem import WordNetLemmatizer 
 from transformers import *
 
+lemmatizer = WordNetLemmatizer() 
+
 def agen_verbs():
+    '''
+    for word in each category, get its infinitive form if it's in en
+    try if it's in glove, then get the most similar word from glove and store it
+    in the data file
+    Note: 721 words will not be changed
+    '''
     df = pd.read_csv('~/resources/lexica/CONNOTATION/agency_verb.csv')
     agen_v = {}
     cats = {'+': 'pos', '-':'neg', '=':'equal'}
     for k, v in cats.items():
         subdf = df[df['Agency{agent}_Label'] == k]
-        agen_v[v] = set(subdf['verb'].str.split()[0])
-    print(agen_v)
+        ver_li = subdf['verb'].str.split()
+        agen_v[v] = set(word_infinitive(li[0]) for li in ver_li if len(li) > 0)
     return agen_v
+
+def word_infinitive(word):
+    infi = lemmatizer.lemmatize(word)
+    return infi 
 
 def get_gpu_memory_map():
     """Get the current gpu usage.
