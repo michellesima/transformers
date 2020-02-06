@@ -1,6 +1,6 @@
 from dataset import Dataset
 import pandas as pd
-from gensim.models.keyedvectors import KeyedVectors
+from utils_dr_pre_word_simi import *
 import sys
 import csv
 import spacy
@@ -18,77 +18,51 @@ DEV_DR = 'data/parads/dev_dr.csv'
 TEST_DR = 'data/parads/test_dr.csv'
 
 batchsize_dr = 4
-device_dr = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-agency_cats = ['<pos>', '<neg>', '<equal>']
-
+device_dr = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+verb2simi = load_word2simi()
 tokenizer_dr = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
 token_dict_dr = {
     'bos_token': '<start>',
     'eos_token': '<end>',
     'pad_token': '<pad>',
     'sep_token': '<sep>',
-    'additional_special_tokens': agency_cats
+    'additional_special_tokens': ['<pos>', '<neg>', '<equal>']
 }
 num_added_token_dr = tokenizer_dr.add_special_tokens(token_dict_dr)
+cats = ['pos', 'neg', 'equal']
 
-def simi_each_word(verb, agenv, vcat, glove_model):
-    res = []
-    res.append(verb)
-    res.append(vcat)
-    if verb not in glove_model:
-        res.append('none')
-        res.append('none')
-        res.append('none')
-        return res
-    for cat in agency_cats:
-        cat = cat[1: len(cat)-1]
-        verbset = agenv[cat]
-        verbset = list(filter(lambda v: v in glove_model, verbset)) 
-        if verb in verbset:
-            verbset.remove(verb)
-        verb_simi = glove_model.most_similar_to_given(verb, verbset)
-        res.append(verb_simi)
-    return res
-
-def simi_verb_each_cat():
+def simi_word(verb, descat):
     '''
-    for each word, get its most similar word in each cat from glove emb
-    both word and its simi words are supposed to be in infinitive form
-    but 721 words cannot get infi form
+    at train and gen time, get the simi verb with descat
+    get the infi form of word
     '''
-    # cat -> infi form of words
-    agenv = agen_verbs()
-    df = pd.DataFrame()
-    glove_model = KeyedVectors.load_word2vec_format("gensim_glove_vectors.txt", binary=False)
-    vs_col = ['verb', 'oricat']
-    vs_col.extend(agency_cats)
-    for cat, verbset in agenv.items():
-        data = [simi_each_word(v, agenv, cat, glove_model) for v in verbset]
-        catdf = pd.DataFrame(data, columns=vs_col)
-        df = df.append(catdf)
-    df.to_csv('verb2simi.csv')
 
+    infi = lemmatizer.lemmatize(verb)
+    row = verb2simi[verb2simi['verb'] == infi]
+    li = row[descat].tolist()
+    if len(li) > 0:
+        return li[0]
+    return verb
 
-def sen_in(sen, train_time=True):
+def sen_in(sen, noi_idx, train_time=True):
+    sen_idx = sen[0]
     sen = sen[1]
     sen['sen'] = sen['sen'].lower()
     sen_li = sen['sen'].split()
-    verb_idx = sen['verb_idx'].split()
-    verb_len = sen['verb_len'].split()
-    verbs = ''
-    for i in range(len(verb_idx)):
-        idx = int(verb_idx[i])
-        num = int(verb_len[i])
-        for j in range(num):
-            verbs += sen_li[idx] + ' '
-            del sen_li[idx]
-    newsen = '<start> '
-    for w in sen_li:
-        newsen += w + ' '
-    if not train_time:
-        newsen = newsen + '<sep> ' + verbs + '<start>'
+    sen_del = sen['sendel']
+    descat = sen['oricat']
+    ori_verbs = sen['verbs'].split()
+    add_verbs = ''
+    if sen_idx in noi_idx:
+        for v in ori_verbs:
+            add_verbs += simi_word(v, descat)
     else:
-        newsen += '<sep> ' + verbs + '<start> ' + sen['sen'] + ' <end>'
+        add_verbs = sen['verbs']
+    newsen = '<start> ' + sen_del
+    if not train_time:
+        newsen = newsen + '<sep> ' + add_verbs + '<start>'
+    else:
+        newsen += '<sep> ' + add_verbs + '<start> ' + sen['sen'] + ' <end>'
     tok_li = tokenizer_dr.encode(newsen, add_special_tokens=False)
     return tok_li
 
@@ -97,23 +71,35 @@ def sen_in_retr(sen, df, method):
     df['glove_avg'] = df['glove_avg'] - senavg
 
 
-def parse_file_dr(file, train_time=True, head=None, method=None):
+def parse_file_dr(file, noi_frac=0.1, train_time=True):
     path = os.path.abspath(file)
     with open(path,encoding='UTF-8') as f:
         df = pd.read_csv(f)
-        if not head is None:
-            df = df.sample(n=head)
-        tok_li = [sen_in(sen, train_time=train_time) for sen in df.iterrows()]
+        df = df.sample(frac=0.1)
+        noi_df = df.sample(frac=noi_frac)
+        if train_time:
+            tok_li = [sen_in(sen, noi_df.index, train_time=train_time) for sen in df.iterrows()]
+        else:
+            cats = ['pos', 'neg', 'equal']
+            tok_li = []
+            retdf = pd.DataFrame()
+            for cat in cats:
+                subdf = df.copy()
+                subdf['oricat'] = cat
+                subdf['cat'] = df['oricat']
+                tem = [sen_in(sen, subdf.index, train_time=train_time) for sen in subdf.iterrows()]
+                tok_li.extend(tem)
+                retdf = retdf.append(subdf)
         if not train_time:
-            return tok_li, df
-        tok_li = add_pad(tok_li)
+            return tok_li, retdf
+        tok_li = add_pad(tok_li, tokenizer_dr)
         dataset = Dataset_dr(list_IDs=tok_li)
         return dataset
 
 def get_label_dr(x):
     label = x.clone()
-    start_inds = ((x == tokenizer.bos_token_id).nonzero())
-    end_inds = ((x == tokenizer.eos_token_id).nonzero())
+    start_inds = ((x == tokenizer_dr.bos_token_id).nonzero())
+    end_inds = ((x == tokenizer_dr.eos_token_id).nonzero())
     for i in range(x.size()[0]):
         # do not include the last cls token
         startind = start_inds[2*i+1][1].item() + 1

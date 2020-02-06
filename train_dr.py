@@ -6,13 +6,12 @@ from torch import utils
 from utils_dr import *
 
 def train(path='openai-gpt', mind=0):
-    print(get_gpu_memory_map())
     max_epochs = 10
     # Load dataset, tokenizer, model from pretrained model/vocabulary
-    train_ds= parse_file_dr(TRAIN_DR)
+    train_ds= parse_file_dr(ROC_TRAIN)
     model = OpenAIGPTLMHeadModel.from_pretrained(path) #model not on cuda
     if path == 'openai-gpt':
-        model.resize_token_embeddings(tokenizer.vocab_size + num_added_token_dr)
+        model.resize_token_embeddings(tokenizer_dr.vocab_size + num_added_token_dr)
     training_generator = utils.data.DataLoader(train_ds, batch_size=batchsize_dr, shuffle=True)
     param = model.parameters()
     optimizer = AdamW(param, lr=1e-6)
@@ -43,13 +42,13 @@ def train(path='openai-gpt', mind=0):
         avg = losssum / count
         print(epoch + 1)
         print(avg)
-        print(get_gpu_memory_map())
+        #print(get_gpu_memory_map())
         model.save_pretrained(savepath)
         train_losses.append(avg)
 
         loss_df = pd.DataFrame()
         loss_df["train_loss"] = train_losses
-        loss_df.to_excel('loss.xlsx')
+        loss_df.to_csv('loss.csv')
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:

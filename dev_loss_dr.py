@@ -44,11 +44,12 @@ if __name__ == '__main__':
             # Model computations
         avg = losssum / count
         print(epoch)
+        print(avg)
         train_losses.append(avg)
 
     loss_df = pd.DataFrame()
     loss_df["dev_loss"] = train_losses
-    loss_df.to_excel('dev_loss.xlsx')
+    loss_df.to_csv('dev_loss.csv')
 
 
 

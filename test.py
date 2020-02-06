@@ -1,5 +1,5 @@
-from utils import *
-from utils_dr import *
+import pandas as pd
 
 if __name__ == '__main__':
-   simi_verb_each_cat() 
+    df = pd.read_excel('data/dev_df.xlsx')
+    print(df.head())

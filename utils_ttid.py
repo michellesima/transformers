@@ -14,8 +14,6 @@ POS = '<pos>'
 NEG = '<neg>'
 EQUAL = '<equal>'
 SOURCE = '<source>'
-TRAIN_FILE = './data/train_df.xlsx'
-DEV_FILE = './data/test_df.xlsx'
 
 max_sen_len = 64
 device_ttid = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")

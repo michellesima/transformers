@@ -2,7 +2,12 @@ import pandas as pd
 from nltk.stem import WordNetLemmatizer 
 from transformers import *
 
+max_sen_len = 64
 lemmatizer = WordNetLemmatizer() 
+
+ROC_TRAIN = './data/roc/train.csv'
+ROC_TEST = './data/roc/test.csv'
+ROC_DEV = './data/roc/dev.csv'
 
 def agen_verbs():
     '''
@@ -42,11 +47,11 @@ def get_gpu_memory_map():
     gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
     return gpu_memory_map
 
-def add_pad(list):
-    res = [__sen_pad(sen) for sen in list]
+def add_pad(list, tokenizer):
+    res = [__sen_pad(sen, tokenizer) for sen in list]
     return res
 
-def __sen_pad(sen):
+def __sen_pad(sen, tokenizer):
     # add padding for each sentence
     if len(sen) < max_sen_len:
         pad = [tokenizer.pad_token_id for i in range(max_sen_len - len(sen))]

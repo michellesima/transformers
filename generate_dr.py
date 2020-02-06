@@ -13,8 +13,8 @@ max_sen_len = 20
 random_seed = 7
 numepoch = 10
 ps = [0.4, 0.6, 0.8, 0.9]
-agen_v = agen_varbs()
-VER_MAG_RATE = 20
+agen_v = agen_verbs()
+VER_MAG_RATE = 1.5
 
 def repeatN(list, n):
     ori = list
@@ -36,14 +36,11 @@ def gen_p(model, test_dataset):
                 device=device_dr
             )
             out = out[0, senlen:].tolist()
-            text = tokenizer.decode(out, clean_up_tokenization_spaces=True, skip_special_tokens=False)
+            text = tokenizer_dr.decode(out, clean_up_tokenization_spaces=True, skip_special_tokens=False)
 
             end_ind = text.find('<end>')
             if end_ind >= 0:
                 text = text[0: end_ind]
-            '''pad_ind = text.find('<pad>')
-            if pa
-                text = text[0: pad_ind]'''
             outlist.append(text)
             outp.append(i)
     return outlist, outp
@@ -71,7 +68,7 @@ def gen_roc(mind):
     generate sen for roc stories
     :param mind: epoch of model
     :return:
-    '''
+    
     test_df = pd.read_excel('./data/dev_df.xlsx')
     test_df = test_df.head(10)
     # list of encoded sen
@@ -79,6 +76,12 @@ def gen_roc(mind):
     finaldf = eval_model(mind, test_dataset, df)
     savedfile = 'gen_sen/res_sen.xlsx'
     finaldf.to_excel(savedfile)
+    '''
+    test_dataset, df = parse_file_dr(ROC_DEV, train_time=False)
+    print(df.columns)
+    finaldf = eval_model(mind, test_dataset, df)
+    savedfile = 'gen_sen/res_sen_roc_del_only.csv'
+    finaldf.to_csv(savedfile)
 
 def gen_para(mind):
     '''
@@ -86,21 +89,11 @@ def gen_para(mind):
     :param mind:
     :return:
     '''
-    test_dataset, df = parse_file_dr(DEV_DR, train_time=False, head = 50)
+    test_dataset, df = parse_file_dr(DEV_DR, train_time=False)
     print(df.columns)
     finaldf = eval_model(mind, test_dataset, df)
-    '''
-    col_names = {
-        'agen_cat0': 'ori_cat',
-        'agen_cat1': 'para_cat',
-        'sen0': 'ori_sen',
-        'sen1': 'para_sen'
-    }
-    finaldf.rename(mapper=col_names, inplace=True, axis=1)
-    finaldf = finaldf[['ori_sen', 'ori_cat', 'para_sen', 'para_cat', 'des_cat', 'out', 'p-value']]
-    '''
-    savedfile = 'gen_sen/res_sen_para_del_only.xlsx'
-    finaldf.to_excel(savedfile)
+    savedfile = 'gen_sen/res_sen_para_del_only.csv'
+    finaldf.to_csv(savedfile)
 
 def main(ds, mind):
     args = {}
