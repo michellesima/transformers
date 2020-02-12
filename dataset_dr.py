@@ -11,6 +11,9 @@ class Dataset_dr(data.Dataset):
         'Denotes the total number of samples'
         return len(self.list_IDs)
 
+    def append(self, other):
+        self.list_IDs.extend(other.list_IDs)
+
     def __getitem__(self, index):
         'Generates one sample of data'
         # Select sample

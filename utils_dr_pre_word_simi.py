@@ -15,9 +15,10 @@ def simi_each_word(verb, agenv, vcat, glove_model, agency_cats):
     for cat in agency_cats:
         verbset = agenv[cat]
         verbset = list(filter(lambda v: v in glove_model, verbset)) 
-        if verb in verbset:
-            verbset.remove(verb)
-        verb_simi = glove_model.most_similar_to_given(verb, verbset)
+        cp_vs = verbset.copy()
+        if verb in cp_vs:
+            cp_vs.remove(verb)
+        verb_simi = glove_model.most_similar_to_given(verb, cp_vs)
         res.append(verb_simi)
     return res
 
@@ -25,7 +26,6 @@ def simi_verb_each_cat():
     '''
     for each word, get its most similar word in each cat from glove emb
     both word and its simi words are supposed to be in infinitive form
-    but 721 words cannot get infi form
     '''
     # cat -> infi form of words
     agenv = agen_verbs()

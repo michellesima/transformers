@@ -18,7 +18,7 @@ DEV_DR = 'data/parads/dev_dr.csv'
 TEST_DR = 'data/parads/test_dr.csv'
 
 batchsize_dr = 4
-device_dr = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+device_dr = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 verb2simi = load_word2simi()
 tokenizer_dr = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
 token_dict_dr = {
@@ -36,58 +36,78 @@ def simi_word(verb, descat):
     at train and gen time, get the simi verb with descat
     get the infi form of word
     '''
-
-    infi = lemmatizer.lemmatize(verb)
+    infi = word_infinitive(verb)
     row = verb2simi[verb2simi['verb'] == infi]
     li = row[descat].tolist()
     if len(li) > 0:
         return li[0]
     return verb
 
-def sen_in(sen, noi_idx, train_time=True):
+def extract_args(sen, para, train_time):
+    if para:
+        sen_del = sen['sendel0']
+        descat = sen['oricat1']
+        verbs = sen['verbs1']
+        para_sen = sen['sen1']
+    else:
+        sen_del = sen['sendel']
+        descat = sen['oricat']
+        verbs = sen['verbs']
+        para_sen = sen['sen']
+    if not train_time:
+        descat = sen['descat']
+    return sen_del, descat, verbs, para_sen
+
+def sen_in(sen, noi_idx, train_time=True, para=False):
     sen_idx = sen[0]
     sen = sen[1]
-    sen['sen'] = sen['sen'].lower()
-    sen_li = sen['sen'].split()
-    sen_del = sen['sendel']
-    descat = sen['oricat']
-    ori_verbs = sen['verbs'].split()
+    sen_del, descat, verbs, para_sen = extract_args(sen, para, train_time)
+    ori_verbs = verbs.split()
     add_verbs = ''
     if sen_idx in noi_idx:
         for v in ori_verbs:
             add_verbs += simi_word(v, descat)
     else:
-        add_verbs = sen['verbs']
+        add_verbs = verbs
     newsen = '<start> ' + sen_del
     if not train_time:
         newsen = newsen + '<sep> ' + add_verbs + '<start>'
     else:
-        newsen += '<sep> ' + add_verbs + '<start> ' + sen['sen'] + ' <end>'
+        newsen += '<sep> ' + add_verbs + '<start> ' + para_sen + ' <end>'
     tok_li = tokenizer_dr.encode(newsen, add_special_tokens=False)
-    return tok_li
+    return tok_li, add_verbs
 
 def sen_in_retr(sen, df, method):
     senavg = df[df['sen']==sen]['glove_avg']
     df['glove_avg'] = df['glove_avg'] - senavg
 
 
-def parse_file_dr(file, noi_frac=0.1, train_time=True):
+def parse_file_dr(file, noi_frac=0.1, train_time=True, para=False):
     path = os.path.abspath(file)
     with open(path,encoding='UTF-8') as f:
         df = pd.read_csv(f)
-        df = df.sample(frac=0.1)
         noi_df = df.sample(frac=noi_frac)
         if train_time:
-            tok_li = [sen_in(sen, noi_df.index, train_time=train_time) for sen in df.iterrows()]
+            tok_li = [sen_in(sen, noi_df.index, train_time=train_time, para=para) for sen in df.iterrows()]
+            tok_li = np.array(tok_li)
+            df['v_supplied'] = tok_li[:, 1]
+            tok_li = tok_li[:, 0]
         else:
+            df = df.sample(frac=0.1)
             cats = ['pos', 'neg', 'equal']
             tok_li = []
             retdf = pd.DataFrame()
             for cat in cats:
                 subdf = df.copy()
-                subdf['oricat'] = cat
-                subdf['cat'] = df['oricat']
-                tem = [sen_in(sen, subdf.index, train_time=train_time) for sen in subdf.iterrows()]
+                subdf['descat'] = cat
+                if para:
+                    subdf['cat'] = df['oricat0']
+                else:
+                    subdf['cat'] = df['oricat']
+                tem = [sen_in(sen, subdf.index, train_time=train_time, para=para) for sen in subdf.iterrows()]
+                tem = np.array(tem)
+                subdf['v_supplied'] = tem[:, 1]
+                tem = tem[:, 0]
                 tok_li.extend(tem)
                 retdf = retdf.append(subdf)
         if not train_time:

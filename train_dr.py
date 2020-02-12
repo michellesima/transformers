@@ -5,16 +5,28 @@ from utils import *
 from torch import utils
 from utils_dr import *
 
-def train(path='openai-gpt', mind=0):
+noise_frac = 0.4
+
+def train(data, path='openai-gpt', mind=0):
     max_epochs = 10
     # Load dataset, tokenizer, model from pretrained model/vocabulary
-    train_ds= parse_file_dr(ROC_TRAIN)
+    if data == 'para':
+        train_ds = parse_file_dr(TRAIN_DR, noi_frac=noise_frac, para=True)
+        savedir = './modelp/savedmodels'
+    elif data == 'mix':
+        train_ds = parse_file_dr(TRAIN_DR, noi_frac=noise_frac, para=True)
+        train_roc = parse_file_dr(ROC_TRAIN, noi_frac=noise_frac)
+        train_ds.append(train_roc)
+        savedir = './modelmix/savedmodels'
+    else:
+        train_ds= parse_file_dr(ROC_TRAIN, noi_frac=noise_frac)
+        savedir = './modelr/savedmodels'
     model = OpenAIGPTLMHeadModel.from_pretrained(path) #model not on cuda
     if path == 'openai-gpt':
         model.resize_token_embeddings(tokenizer_dr.vocab_size + num_added_token_dr)
     training_generator = utils.data.DataLoader(train_ds, batch_size=batchsize_dr, shuffle=True)
     param = model.parameters()
-    optimizer = AdamW(param, lr=1e-6)
+    optimizer = AdamW(param, lr=1e-5)
     model.to(device_dr)
     ini = 0
     criteria = CrossEntropyLoss()
@@ -22,7 +34,7 @@ def train(path='openai-gpt', mind=0):
     # Loop over epochs
     for epoch in range(mind, max_epochs):
         # Training
-        savepath = './savedm/savedmodels' + str(epoch + 1)
+        savepath = savedir + str(epoch + 1)
         model.train()
         losssum = 0.0
         count = 0
@@ -48,11 +60,12 @@ def train(path='openai-gpt', mind=0):
 
         loss_df = pd.DataFrame()
         loss_df["train_loss"] = train_losses
-        loss_df.to_csv('loss.csv')
+        loss_df.to_csv('loss_'+data+'.csv')
 
 if __name__ == '__main__':
-    if len(sys.argv) == 1:
-        train()
+    data = sys.argv[1]
+    if len(sys.argv) == 2:
+        train(data)
     else:
-        model = './savedm/savedmodels' + sys.argv[1]
-        train(model, int(sys.argv[1]))
+        model = './savedm/savedmodels' + sys.argv[2]
+        train(data, model, int(sys.argv[2]))

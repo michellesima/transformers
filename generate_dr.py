@@ -45,12 +45,23 @@ def gen_p(model, test_dataset):
             outp.append(i)
     return outlist, outp
 
-def eval_model(mind, test_dataset, df):
+def eval_model(mind, test_dataset, df, mtd='para'):
     '''
     get generated sentence for a particular model
     '''
     finaldf = pd.DataFrame()
-    modelpath = './savedm/savedmodels' + str(mind)
+    if mtd == 'para':
+        savedir = './modelp/savedmodels'
+    elif mtd == 'mix':
+        savedir = './modelmix/savedmodels'
+    else:
+        savedir = './modelr/savedmodels'
+    if 'sen0' in df.columns:
+        colsen = 'sen0'
+    else:
+        colsen = 'sen'
+    modelpath = savedir + str(mind)
+    print(modelpath)
     model = OpenAIGPTLMHeadModel.from_pretrained(modelpath)
     model.to(device_dr)
     model.eval()
@@ -58,12 +69,12 @@ def eval_model(mind, test_dataset, df):
     outlist, outp = gen_p(model, test_dataset)
     df['out'] = outlist
     df['p-value'] = outp
-    df.sort_values(by=['sen', 'p-value'], inplace=True)
+    df.sort_values(by=[colsen, 'p-value'], inplace=True)
     df['modelind'] = mind
     finaldf = finaldf.append(df, ignore_index=True)
     return finaldf
 
-def gen_roc(mind):
+def gen_roc(mindi, model='para'):
     '''
     generate sen for roc stories
     :param mind: epoch of model
@@ -79,11 +90,11 @@ def gen_roc(mind):
     '''
     test_dataset, df = parse_file_dr(ROC_DEV, train_time=False)
     print(df.columns)
-    finaldf = eval_model(mind, test_dataset, df)
+    finaldf = eval_model(mind, test_dataset, df, mtd=model)
     savedfile = 'gen_sen/res_sen_roc_del_only.csv'
     finaldf.to_csv(savedfile)
 
-def gen_para(mind):
+def gen_para(mind, model='para'):
     '''
     generate sen for para dataset
     :param mind:
@@ -91,21 +102,22 @@ def gen_para(mind):
     '''
     test_dataset, df = parse_file_dr(DEV_DR, train_time=False)
     print(df.columns)
-    finaldf = eval_model(mind, test_dataset, df)
+    finaldf = eval_model(mind, test_dataset, df, mtd=model)
     savedfile = 'gen_sen/res_sen_para_del_only.csv'
     finaldf.to_csv(savedfile)
 
-def main(ds, mind):
+def main(ds, mind, para='para'):
     args = {}
     args['n_ctx'] = max_sen_len
-    # load saved tokenizer
-
     # change to -> load saved dataset
     if ds == 'roc':
-        gen_roc(mind)
+        gen_roc(mind, para)
     else:
-        gen_para(mind)
+        gen_para(mind, para)
 
 if __name__ == '__main__':
     ds, mind = sys.argv[1], sys.argv[2]
-    main(ds, mind)
+    if len(sys.argv) == 4:
+        main(ds, mind, sys.argv[3])
+    else:
+        main(ds, mind)
