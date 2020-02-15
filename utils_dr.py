@@ -18,7 +18,7 @@ DEV_DR = 'data/parads/dev_dr.csv'
 TEST_DR = 'data/parads/test_dr.csv'
 
 batchsize_dr = 4
-device_dr = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device_dr = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 verb2simi = load_word2simi()
 tokenizer_dr = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
 token_dict_dr = {

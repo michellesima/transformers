@@ -100,7 +100,7 @@ def gen_para(mind, model='para'):
     :param mind:
     :return:
     '''
-    test_dataset, df = parse_file_dr(DEV_DR, train_time=False)
+    test_dataset, df = parse_file_dr(DEV_DR, train_time=False, para=True)
     print(df.columns)
     finaldf = eval_model(mind, test_dataset, df, mtd=model)
     savedfile = 'gen_sen/res_sen_para_del_only.csv'

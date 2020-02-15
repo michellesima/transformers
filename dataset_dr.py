@@ -6,6 +6,8 @@ class Dataset_dr(data.Dataset):
     def __init__(self, list_IDs):
         'Initialization'
         self.list_IDs = list_IDs
+    def len(self):
+        return len(self.list_IDs)
 
     def __len__(self):
         'Denotes the total number of samples'

@@ -17,6 +17,7 @@ def train(data, path='openai-gpt', mind=0):
         train_ds = parse_file_dr(TRAIN_DR, noi_frac=noise_frac, para=True)
         train_roc = parse_file_dr(ROC_TRAIN, noi_frac=noise_frac)
         train_ds.append(train_roc)
+        print(train_ds.len())
         savedir = './modelmix/savedmodels'
     else:
         train_ds= parse_file_dr(ROC_TRAIN, noi_frac=noise_frac)
