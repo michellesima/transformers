@@ -17,6 +17,8 @@ TRAIN_DR = 'data/parads/train_dr.csv'
 DEV_DR = 'data/parads/dev_dr.csv'
 TEST_DR = 'data/parads/test_dr.csv'
 
+fw = open('verb_no_simi.txt', 'w')
+
 batchsize_dr = 4
 device_dr = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 verb2simi = load_word2simi()
@@ -25,8 +27,8 @@ token_dict_dr = {
     'bos_token': '<start>',
     'eos_token': '<end>',
     'pad_token': '<pad>',
-    'sep_token': '<sep>',
-    'additional_special_tokens': ['<pos>', '<neg>', '<equal>']
+    'cls_token': '<cls>',
+    'additional_special_tokens': ['<pos>', '<neg>', '<equal>', '<VERB>']
 }
 num_added_token_dr = tokenizer_dr.add_special_tokens(token_dict_dr)
 cats = ['pos', 'neg', 'equal']
@@ -41,6 +43,7 @@ def simi_word(verb, descat):
     li = row[descat].tolist()
     if len(li) > 0:
         return li[0]
+    fw.write(verb+'\n')
     return verb
 
 def extract_args(sen, para, train_time):
@@ -71,9 +74,9 @@ def sen_in(sen, noi_idx, train_time=True, para=False):
         add_verbs = verbs
     newsen = '<start> ' + sen_del
     if not train_time:
-        newsen = newsen + '<sep> ' + add_verbs + '<start>'
+        newsen = newsen + '<cls> ' + descat + '<start>'
     else:
-        newsen += '<sep> ' + add_verbs + '<start> ' + para_sen + ' <end>'
+        newsen += '<cls> ' + descat + '<start> ' + para_sen + ' <end>'
     tok_li = tokenizer_dr.encode(newsen, add_special_tokens=False)
     return tok_li, add_verbs
 
@@ -88,6 +91,8 @@ def parse_file_dr(file, noi_frac=0.1, train_time=True, para=False):
         df = pd.read_csv(f)
         noi_df = df.sample(frac=noi_frac)
         if train_time:
+            if not para:
+                df = df.sample(frac=0.5)
             tok_li = [sen_in(sen, noi_df.index, train_time=train_time, para=para) for sen in df.iterrows()]
             tok_li = np.array(tok_li)
             df['v_supplied'] = tok_li[:, 1]

@@ -46,7 +46,7 @@ if __name__ == '__main__':
         for local_batch, local_labels in enumerate(training_generator):
             # Transfer to GPUpri
             x = local_labels # b * s
-            label = get_label(x, batchsize)
+            label = get_label_ivp(x, batchsize)
             outputs = model(x.to(device_ivp), labels=label.to(device_ivp))
             loss, logits = outputs[:2]
             losssum += loss

@@ -1,7 +1,9 @@
 from utils import *
 from gensim.models.keyedvectors import KeyedVectors
 import os
+import sys
 
+#fw = open('verb_outside_glove.txt', 'w')
 
 def simi_each_word(verb, agenv, vcat, glove_model, agency_cats):
     res = []
@@ -14,6 +16,11 @@ def simi_each_word(verb, agenv, vcat, glove_model, agency_cats):
         return res
     for cat in agency_cats:
         verbset = agenv[cat]
+        '''
+        for v in verbset:
+            if v not in glove_model:
+                fw.write(v+'\n')
+        '''
         verbset = list(filter(lambda v: v in glove_model, verbset)) 
         cp_vs = verbset.copy()
         if verb in cp_vs:

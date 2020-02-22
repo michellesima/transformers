@@ -1,6 +1,7 @@
 from utils import *
 import torch
 from transformers import *
+import sys
 
 sen_text = 'sen'
 agency = 'oricat'
@@ -28,22 +29,25 @@ def agen_vector():
     for label, verbset in agen_v.items():
         vector = torch.ones(tokenizer_ivp.vocab_size + num_added_token)
         for v in verbset:
-            past = infi2past(v)
-            v_li = tokenizer_ivp.encode(past)
-            vector[v_li[0]] *= VER_MAG_RATE
+            forms = infi2allforms(v)
+            for form in forms:
+                v_li = tokenizer_ivp.encode(form)
+                vector[v_li[0]] *= VER_MAG_RATE
         agen_vectors[label] = vector
     return agen_vectors
 
-def infi2past(word):
+def infi2allforms(word):
+    res = []
     row = verb_form[verb_form[0] == word]
     if row.empty:
-        return word
-    infi = row[10].iloc[0]
-    if row[10].isna().any():
-        return word
-    return infi
+        res.append(word)
+        return res
+    row = row.dropna(axis=1)
+    for col in row.columns:
+        res.append(row[col].iloc[0])
+    return res
 
-def get_label(x, batchsize):
+def get_label_ivp(x, batchsize):
     label = x.clone()
 
     cls_ind = ((x == tokenizer_ivp.cls_token_id).nonzero())

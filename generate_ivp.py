@@ -23,12 +23,8 @@ def repeatN(list, n):
         list = list.append(ori, ignore_index=True)
     return list
 
-def sample_sequence(model, length, context, num_samples=1, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0,
+def sample_sequence_ivp(model, length, context, num_samples=1, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0,
                     xlm_lang=None, device='cpu', label='equal'):
-    cat_token = context[len(context)-1]
-    #label = tokenizer_ivp.convert_ids_to_tokens(cat_token)
-    #label = label[1: len(label) -1]
-    # x (b * s)
     context = torch.tensor(context, dtype=torch.long, device=device)
     context = context.unsqueeze(0).repeat(num_samples, 1)
     generated = context
@@ -40,9 +36,6 @@ def sample_sequence(model, length, context, num_samples=1, temperature=1, top_k=
 
             outputs = model(**inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet/CTRL (cached hidden-states)
             next_token_logits = outputs[0][0, -1, :] / (temperature if temperature > 0 else 1.)
-            # decrease the prob for period for the first three words
-            if _ < 3:
-                next_token_logits[1] /= 100
             # reptition penalty from CTRL (https://arxiv.org/abs/1909.05858)
             for _ in set(generated.view(-1).tolist()):
                 next_token_logits[_] /= repetition_penalty
@@ -68,7 +61,7 @@ def gen_p(model, test_dataset, descat):
         for ind in range(len(test_dataset)):
             context_tokens = test_dataset[ind]
             label = descat.iloc[ind]
-            out = sample_sequence(
+            out = sample_sequence_ivp(
                 model=model,
                 context=context_tokens,
                 length=max_sen_len,

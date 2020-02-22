@@ -8,7 +8,7 @@ from utils_dr import *
 noise_frac = 0.4
 
 def train(data, path='openai-gpt', mind=0):
-    max_epochs = 10
+    max_epochs = 4
     # Load dataset, tokenizer, model from pretrained model/vocabulary
     if data == 'para':
         train_ds = parse_file_dr(TRAIN_DR, noi_frac=noise_frac, para=True)

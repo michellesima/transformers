@@ -12,7 +12,7 @@ import sys
 max_sen_len = 20
 random_seed = 7
 numepoch = 10
-ps = [0.4, 0.6, 0.8, 0.9]
+ps = [0.4, 0.6]
 agen_v = agen_verbs()
 VER_MAG_RATE = 1.5
 

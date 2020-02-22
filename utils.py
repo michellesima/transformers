@@ -25,6 +25,7 @@ def agen_verbs():
         ver_li = subdf['verb'].str.split()
         agen_v[v] = set(word_infinitive(li[0]) for li in ver_li if len(li) > 0)
         total += len(agen_v[v])
+    print(total)
     return agen_v
 
 def word_infinitive(word):
