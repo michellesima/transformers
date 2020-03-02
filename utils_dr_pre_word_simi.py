@@ -35,14 +35,13 @@ def simi_verb_each_cat():
     both word and its simi words are supposed to be in infinitive form
     '''
     # cat -> infi form of words
-    agenv = agen_verbs()
     df = pd.DataFrame()
     agency_cats = ['pos', 'neg', 'equal']
     glove_model = KeyedVectors.load_word2vec_format("gensim_glove_vectors.txt", binary=False)
     vs_col = ['verb', 'oricat']
     vs_col.extend(agency_cats)
-    for cat, verbset in agenv.items():
-        data = [simi_each_word(v, agenv, cat, glove_model, agency_cats) for v in verbset]
+    for cat, verbset in agen_v.items():
+        data = [simi_each_word(v, agen_v, cat, glove_model, agency_cats) for v in verbset]
         catdf = pd.DataFrame(data, columns=vs_col)
         df = df.append(catdf)
     df.to_csv('verb2simi.csv')

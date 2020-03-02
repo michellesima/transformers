@@ -1,9 +1,11 @@
 from transformers import *
 import torch
 from torch.utils.data import DataLoader
+from generate_ivp import sample_sequence_ivp, verb_stat
 import pandas as pd
 from utils import *
 from utils_dr import *
+from utils_ivp import agen_vector
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
 from examples.run_generation import *
@@ -13,8 +15,9 @@ max_sen_len = 20
 random_seed = 7
 numepoch = 10
 ps = [0.4, 0.6]
+agen_vector = agen_vector(tokenizer_dr, num_added_token_dr, multi=False)
 agen_v = agen_verbs()
-VER_MAG_RATE = 1.5
+REPEAT_PENALTY = 7.5
 
 def repeatN(list, n):
     ori = list
@@ -22,22 +25,26 @@ def repeatN(list, n):
         list = list.append(ori, ignore_index=True)
     return list
 
-def gen_p(model, test_dataset):
+def gen_p(model, test_dataset, descat):
     outlist = []
     outp = []
     for i in ps:
-        for sen in test_dataset:
+        for j in range(len(test_dataset)):
+            sen = test_dataset[j]
             senlen = len(sen)
-            out = sample_sequence(
+            out = sample_sequence_ivp(
                 model=model,
                 context=sen,
+                agen_v=agen_vector,
                 length=max_sen_len,
                 top_p=i,
+                repetition_penalty=REPEAT_PENALTY,
+                label=descat[j],
+                multi=False,
                 device=device_dr
             )
             out = out[0, senlen:].tolist()
             text = tokenizer_dr.decode(out, clean_up_tokenization_spaces=True, skip_special_tokens=False)
-
             end_ind = text.find('<end>')
             if end_ind >= 0:
                 text = text[0: end_ind]
@@ -66,7 +73,7 @@ def eval_model(mind, test_dataset, df, mtd='para'):
     model.to(device_dr)
     model.eval()
     df = repeatN(df, len(ps) - 1)
-    outlist, outp = gen_p(model, test_dataset)
+    outlist, outp = gen_p(model, test_dataset, df['descat'].tolist())
     df['out'] = outlist
     df['p-value'] = outp
     df.sort_values(by=[colsen, 'p-value'], inplace=True)
@@ -75,19 +82,6 @@ def eval_model(mind, test_dataset, df, mtd='para'):
     return finaldf
 
 def gen_roc(mindi, model='para'):
-    '''
-    generate sen for roc stories
-    :param mind: epoch of model
-    :return:
-    
-    test_df = pd.read_excel('./data/dev_df.xlsx')
-    test_df = test_df.head(10)
-    # list of encoded sen
-    test_dataset, df = make_dataset(test_df, train_time=False)
-    finaldf = eval_model(mind, test_dataset, df)
-    savedfile = 'gen_sen/res_sen.xlsx'
-    finaldf.to_excel(savedfile)
-    '''
     test_dataset, df = parse_file_dr(ROC_DEV, train_time=False)
     print(df.columns)
     finaldf = eval_model(mind, test_dataset, df, mtd=model)
@@ -121,3 +115,5 @@ if __name__ == '__main__':
         main(ds, mind, sys.argv[3])
     else:
         main(ds, mind)
+    vstat_df = pd.DataFrame(data=verb_stat)
+    vstat_df.to_csv('verb_logits_stat.csv')

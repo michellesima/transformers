@@ -31,6 +31,7 @@ token_dict_dr = {
     'additional_special_tokens': ['<pos>', '<neg>', '<equal>', '<VERB>']
 }
 num_added_token_dr = tokenizer_dr.add_special_tokens(token_dict_dr)
+print(tokenizer_dr.vocab_size)
 cats = ['pos', 'neg', 'equal']
 
 def simi_word(verb, descat):
@@ -91,14 +92,13 @@ def parse_file_dr(file, noi_frac=0.1, train_time=True, para=False):
         df = pd.read_csv(f)
         noi_df = df.sample(frac=noi_frac)
         if train_time:
-            if not para:
-                df = df.sample(frac=0.5)
             tok_li = [sen_in(sen, noi_df.index, train_time=train_time, para=para) for sen in df.iterrows()]
             tok_li = np.array(tok_li)
             df['v_supplied'] = tok_li[:, 1]
             tok_li = tok_li[:, 0]
         else:
-            df = df.sample(frac=0.1)
+            if True:
+                df = df.sample(frac=0.1, random_state=7)
             cats = ['pos', 'neg', 'equal']
             tok_li = []
             retdf = pd.DataFrame()

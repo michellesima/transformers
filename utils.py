@@ -2,14 +2,6 @@ import pandas as pd
 from nltk.stem import WordNetLemmatizer 
 from transformers import *
 
-max_sen_len = 64
-#lemmatizer = WordNetLemmatizer() 
-verb_form = pd.read_csv('verb.txt', usecols=[_ for _ in range(24)], header=None)
-
-ROC_TRAIN = './data/roc/train.csv'
-ROC_TEST = './data/roc/test.csv'
-ROC_DEV = './data/roc/dev.csv'
-
 def agen_verbs():
     '''
     for word in each category, get its infinitive form if it's in verb.txt
@@ -27,6 +19,8 @@ def agen_verbs():
         total += len(agen_v[v])
     print(total)
     return agen_v
+
+
 
 def word_infinitive(word):
     #infi = lemmatizer.lemmatize(word)
@@ -70,4 +64,15 @@ def __sen_pad(sen, tokenizer):
             sen.pop(len(sen) - 2)
     return sen
 
+
+max_sen_len = 64
+#lemmatizer = WordNetLemmatizer() 
+verb_form = pd.read_csv('verb.txt', usecols=[_ for _ in range(24)], header=None)
+ps = [0.4, 0.6]
+num_epoch = 10
+
+agen_v = agen_verbs()
+ROC_TRAIN = './data/roc/train.csv'
+ROC_TEST = './data/roc/test.csv'
+ROC_DEV = './data/roc/dev.csv'
 

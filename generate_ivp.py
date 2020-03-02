@@ -8,14 +8,18 @@ from torch.nn import CrossEntropyLoss
 from examples.run_generation import *
 import sys
 from torch import nn
+import numpy as np
 
-max_sen_len = 20
 random_seed = 7
 numepoch = 10
 softmax = nn.Softmax(dim=0)
-ps = [0.4, 0.6, 0.8, 0.9]
 
-agen_v = agen_vector()
+verb_stat = {
+    'avg': [],
+    'std': []
+}
+
+#agen_v = agen_vector(tokenizer_ivp, num_added_token_ivp, multi=False)
 
 def repeatN(list, n):
     ori = list
@@ -23,11 +27,12 @@ def repeatN(list, n):
         list = list.append(ori, ignore_index=True)
     return list
 
-def sample_sequence_ivp(model, length, context, num_samples=1, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0,
-                    xlm_lang=None, device='cpu', label='equal'):
+def sample_sequence_ivp(model, length, context, agen_v, num_samples=1, temperature=1, tokenizer=None,top_k=0, top_p=0.0, \
+        repetition_penalty=1.0, xlm_lang=None, device='cpu', label='equal', multi=True):
     context = torch.tensor(context, dtype=torch.long, device=device)
     context = context.unsqueeze(0).repeat(num_samples, 1)
     generated = context
+    orilen = len(context)
     with torch.no_grad():
         for _ in trange(length):
             inputs = {'input_ids': generated}
@@ -37,13 +42,26 @@ def sample_sequence_ivp(model, length, context, num_samples=1, temperature=1, to
             outputs = model(**inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet/CTRL (cached hidden-states)
             next_token_logits = outputs[0][0, -1, :] / (temperature if temperature > 0 else 1.)
             # reptition penalty from CTRL (https://arxiv.org/abs/1909.05858)
-            for _ in set(generated.view(-1).tolist()):
-                next_token_logits[_] /= repetition_penalty
 
             verb_vector = agen_v[label]
+            verb_idx = verb_vector.nonzero()
+            np_vidx = verb_idx.numpy()
             verb_vector = verb_vector.to(device)
-            next_token_logits = next_token_logits * verb_vector
-
+            verb_logits = next_token_logits.cpu().numpy()[np_idx]
+            print(verb_logits)
+            print(verb_logits.size())
+            verb_stat['avg'].append(np.average(verb_logits))
+            verb_stat['std'].append(np.std(verb_logits))
+            if multi:
+                next_token_logits = next_token_logits * verb_vector
+            else:
+                next_token_logits += verb_vector
+            for j in set(generated[orilen:].view(-1).tolist()):
+                if multi:
+                    next_token_logits[j] /= repetition_penalty
+                else:
+                    next_token_logits[j] -= repetition_penalty
+            
             next_token_logits = softmax(next_token_logits)
             
             filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
@@ -63,6 +81,7 @@ def gen_p(model, test_dataset, descat):
             label = descat.iloc[ind]
             out = sample_sequence_ivp(
                 model=model,
+                agen_v=agen_v,
                 context=context_tokens,
                 length=max_sen_len,
                 top_p=i,

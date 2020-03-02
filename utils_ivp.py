@@ -7,8 +7,8 @@ sen_text = 'sen'
 agency = 'oricat'
 input = 'input'
 output = 'out'
-max_sen_len = 64
 VER_MAG_RATE = 1.5
+VER_ADD_VAL = 7.5
 
 use_cuda = torch.cuda.is_available()
 tokenizer_ivp = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
@@ -19,20 +19,25 @@ token_dict = {
     'cls_token': '<cls>',
     'additional_special_tokens': ['<pos>', '<neg>', '<equal>']
 }
-num_added_token = tokenizer_ivp.add_special_tokens(token_dict)
+num_added_token_ivp = tokenizer_ivp.add_special_tokens(token_dict)
 device_ivp = torch.device("cuda:2" if use_cuda else "cpu")
 
 
-def agen_vector():
-    agen_v = agen_verbs()
+def agen_vector(tokenizer, num_added, multi=True):
     agen_vectors = {}
     for label, verbset in agen_v.items():
-        vector = torch.ones(tokenizer_ivp.vocab_size + num_added_token)
+        if multi:
+            vector = torch.ones(tokenizer.vocab_size + num_added)
+        else:
+            vector = torch.zeros(tokenizer.vocab_size + num_added)
         for v in verbset:
             forms = infi2allforms(v)
             for form in forms:
-                v_li = tokenizer_ivp.encode(form)
-                vector[v_li[0]] *= VER_MAG_RATE
+                v_li = tokenizer.encode(form)
+                if multi:
+                    vector[v_li[0]] *= VER_MAG_RATE
+                else:
+                    vector[v_li[0]] = VER_ADD_VAL
         agen_vectors[label] = vector
     return agen_vectors
 
