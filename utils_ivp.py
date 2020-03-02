@@ -8,7 +8,7 @@ agency = 'oricat'
 input = 'input'
 output = 'out'
 VER_MAG_RATE = 1.5
-VER_ADD_VAL = 7.5
+VER_ADD_VAL = 3.75
 
 use_cuda = torch.cuda.is_available()
 tokenizer_ivp = OpenAIGPTTokenizer.from_pretrained('openai-gpt')

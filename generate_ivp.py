@@ -47,9 +47,7 @@ def sample_sequence_ivp(model, length, context, agen_v, num_samples=1, temperatu
             verb_idx = verb_vector.nonzero()
             np_vidx = verb_idx.numpy()
             verb_vector = verb_vector.to(device)
-            verb_logits = next_token_logits.cpu().numpy()[np_idx]
-            print(verb_logits)
-            print(verb_logits.size())
+            verb_logits = next_token_logits.cpu().numpy()[np_vidx]
             verb_stat['avg'].append(np.average(verb_logits))
             verb_stat['std'].append(np.std(verb_logits))
             if multi:
