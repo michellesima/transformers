@@ -1,11 +1,5 @@
-import torch
+import numpy as np
 
-softmax = torch.nn.Softmax(dim=1)
-li = [
-    [1, 4, 5],
-    [2, 4, 4]
-]
-
-tensor = torch.FloatTensor(li)
-tensor = softmax(tensor)
-print(tensor)
+a = np.array([[1,2,3]])
+a = np.repeat(a, 3, axis=0)
+print(a)

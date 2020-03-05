@@ -1,7 +1,7 @@
 from transformers import *
 import torch
 from torch.utils.data import DataLoader
-from generate_ivp import sample_sequence_ivp, verb_stat
+from generate_ivp import sample_sequence_ivp
 import pandas as pd
 from utils import *
 from utils_dr import *
@@ -115,5 +115,3 @@ if __name__ == '__main__':
         main(ds, mind, sys.argv[3])
     else:
         main(ds, mind)
-    vstat_df = pd.DataFrame(data=verb_stat)
-    vstat_df.to_csv('verb_logits_stat.csv')

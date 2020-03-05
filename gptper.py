@@ -10,7 +10,7 @@ python gptper.py <dataset> <method> <toeval('sen' or 'sen0' or 'out')> (<pvalue>
 device_2 = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 def measurepp(df, toeval):
-    #df = df.sample(n=150)
+    df = df.sample(n=150)
     outsen = df[toeval].tolist()
     gpttokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
     gpt = OpenAIGPTLMHeadModel.from_pretrained('openai-gpt')
@@ -22,9 +22,9 @@ def measurepp(df, toeval):
     count = 0
     for sen in outsen:
         tok_li = gpttokenizer.encode(sen, add_special_tokens=False)
-        tok_ten = torch.tensor(tok_li, device=device_2)
-        print(tok_ten.size())
-        loss, logits, past = gpt(tok_ten, labels=tok_ten)
+        tok_ten = torch.tensor(tok_li, device=device_2).unsqueeze(0)
+        out = gpt(tok_ten, labels=tok_ten)
+        loss = out[0]
         count += 1
         res += loss
         '''

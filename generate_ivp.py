@@ -14,11 +14,6 @@ random_seed = 7
 numepoch = 10
 softmax = nn.Softmax(dim=0)
 
-verb_stat = {
-    'avg': [],
-    'std': []
-}
-
 #agen_v = agen_vector(tokenizer_ivp, num_added_token_ivp, multi=False)
 
 def repeatN(list, n):
@@ -44,12 +39,7 @@ def sample_sequence_ivp(model, length, context, agen_v, num_samples=1, temperatu
             # reptition penalty from CTRL (https://arxiv.org/abs/1909.05858)
 
             verb_vector = agen_v[label]
-            verb_idx = verb_vector.nonzero()
-            np_vidx = verb_idx.numpy()
             verb_vector = verb_vector.to(device)
-            verb_logits = next_token_logits.cpu().numpy()[np_vidx]
-            verb_stat['avg'].append(np.average(verb_logits))
-            verb_stat['std'].append(np.std(verb_logits))
             if multi:
                 next_token_logits = next_token_logits * verb_vector
             else:
