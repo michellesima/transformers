@@ -521,6 +521,80 @@ class OpenAIGPTLMHeadModel(OpenAIGPTPreTrainedModel):
 
         return outputs  # (loss), lm_logits, (all hidden states), (all attentions)
 
+@add_start_docstrings("""OpenAI GPT Model transformer with a language modeling agen head on top
+(linear layer with weights tied to the input embeddings). """, OPENAI_GPT_START_DOCSTRING, OPENAI_GPT_INPUTS_DOCSTRING)
+class OpenAIGPTLMHeadAgenModel(OpenAIGPTPreTrainedModel):
+    r"""
+        **labels**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, sequence_length)``:
+            Labels for language modeling.
+            Note that the labels **are shifted** inside the model, i.e. you can set ``labels = input_ids``
+            Indices are selected in ``[-1, 0, ..., config.vocab_size]``
+            All labels set to ``-1`` are ignored (masked), the loss is only
+            computed for labels in ``[0, ..., config.vocab_size]``
+
+    Outputs: `Tuple` comprising various elements depending on the configuration (config) and inputs:
+        **loss**: (`optional`, returned when ``labels`` is provided) ``torch.FloatTensor`` of shape ``(1,)``:
+            Language modeling loss.
+        **prediction_scores**: ``torch.FloatTensor`` of shape ``(batch_size, sequence_length, config.vocab_size)``
+            Prediction scores of the language modeling head (scores for each vocabulary token before SoftMax).
+        **hidden_states**: (`optional`, returned when ``config.output_hidden_states=True``)
+            list of ``torch.FloatTensor`` (one for the output of each layer + the output of the embeddings)
+            of shape ``(batch_size, sequence_length, hidden_size)``:
+            Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+        **attentions**: (`optional`, returned when ``config.output_attentions=True``)
+            list of ``torch.FloatTensor`` (one for each layer) of shape ``(batch_size, num_heads, sequence_length, sequence_length)``:
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention heads.
+
+    Examples::
+
+        tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
+        model = OpenAIGPTLMHeadModel.from_pretrained('openai-gpt')
+        input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
+        outputs = model(input_ids, labels=input_ids)
+        loss, logits = outputs[:2]
+
+    """
+    def __init__(self, config):
+        super(OpenAIGPTLMHeadAgenModel, self).__init__(config)
+        self.transformer = OpenAIGPTModel(config)
+        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        print(config.vocab_size)
+        self.cat_head = nn.Linear(3, config.vocab_size + 5)
+        self.cat_head.to(torch.device("cuda:1"))
+        self.init_weights()
+        self.tie_weights()
+
+    def tie_weights(self):
+        """ Make sure we are sharing the input and output embeddings.
+            Export to TorchScript can't handle parameter sharing so we are cloning them instead.
+        """
+        self._tie_or_clone_weights(self.lm_head,
+                                   self.transformer.tokens_embed)
+
+    def forward(self, input_ids, e=None, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None,
+                labels=None):
+        transformer_outputs = self.transformer(input_ids,
+                                               attention_mask=attention_mask,
+                                               token_type_ids=token_type_ids,
+                                               position_ids=position_ids,
+                                               head_mask=head_mask)
+        hidden_states = transformer_outputs[0]
+        lm_logits = self.lm_head(hidden_states)
+        cat_logits = self.cat_head(e)
+        lm_logits += cat_logits
+        outputs = (lm_logits,) + transformer_outputs[1:]
+        if labels is not None:
+            # Shift so that tokens < n predict n
+            shift_logits = lm_logits[..., :-1, :].contiguous()
+            shift_labels = labels[..., 1:].contiguous()
+            # Flatten the tokens
+            loss_fct = CrossEntropyLoss(ignore_index=-1)
+            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)),
+                            shift_labels.view(-1))
+            outputs = (loss,) + outputs
+
+        return outputs  # (loss), lm_logits, (all hidden states), (all attentions)
+
 
 @add_start_docstrings("""OpenAI GPT Model transformer with a language modeling and a multiple-choice classification
 head on top e.g. for RocStories/SWAG tasks. The two heads are two linear layers.
