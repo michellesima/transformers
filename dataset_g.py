@@ -26,7 +26,7 @@ class Dataset_g(data.Dataset):
         # Load data and get label
         X = torch.LongTensor(ID)
         ecat = self.es[index]
-        e = torch.DoubleTensor(ecat)
+        e = torch.FloatTensor(ecat)
         label = self.labels[index]
         y = torch.LongTensor(label)
-        return X, ecat, y
+        return X, e, y

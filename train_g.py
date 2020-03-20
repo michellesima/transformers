@@ -9,12 +9,10 @@ def train():
     dataset = process_in_g(TRAIN_G)
     model = OpenAIGPTLMHeadAgenModel.from_pretrained('openai-gpt') #model not on cuda
     model.resize_token_embeddings(tokenizer_g.vocab_size + num_added_token_g)
-
-    training_generator = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, pin_memory=True)
+    training_generator = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, pin_memory=False)
     param = model.parameters()
     optimizer = AdamW(param, lr=1e-5)
     model.to(device_g)
-    model.cpu()
     train_losses = []
     savedir = './modelg/savedmodels'
     for epoch in range(maxepoch):
@@ -25,19 +23,18 @@ def train():
         if not os.path.exists(savepath):
             os.mkdir(savepath)
         for local_batch, local_labels in enumerate(training_generator):
-            x = local_labels[0]
-            e = local_labels[1]
-            e = e.type(torch.FloatTensor)
-            label = local_labels[2]
-            x, e, label = x.to(device_g), e.to(device_g), label.to(device_g)
+            x = torch.LongTensor(local_labels[0].data).to(device_g)
+            e = torch.FloatTensor(local_labels[1].data).to(device_g)
+            label = torch.LongTensor(local_labels[2].data).to(device_g)
+
             outputs = model(x, e=e, labels=label)
-            x, e, label = x.cpu(), e.cpu(), label.cpu()
             loss, logits = outputs[:2]
             print(loss)
             losssum += loss
             count += 1
             optimizer.step()
             optimizer.zero_grad()
+            torch.cuda.empty_cache()
         avg = losssum / count
         print(epoch + 1)
         print(avg)

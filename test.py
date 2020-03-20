@@ -1,5 +1,5 @@
-import numpy as np
+import torch
 
-a = np.array([[1,2,3]])
-a = np.repeat(a, 3, axis=0)
-print(a)
+a = torch.FloatTensor([1,2,3])
+b = torch.FloatTensor(a.data)
+print(b)

@@ -44,9 +44,6 @@ def train(data, path='openai-gpt', mind=0):
         for local_batch, local_labels in enumerate(training_generator):
             # Transfer to GPUpri
             x, label = parse_model_inputs_dr(local_labels)
-            print(x)
-            print(x.size())
-            sys.exit()
             outputs = model(x.to(device_dr), labels=label.to(device_dr))
             loss, logits = outputs[:2]
             losssum += loss
