@@ -1,13 +1,13 @@
 import torch
 from torch.utils import data
+import numpy as np
 
 class Dataset_g(data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, list_IDs, es, labels):
+    def __init__(self, list_IDs, es):
         'Initialization'
         self.list_IDs = list_IDs
         self.es = es
-        self.labels = labels
 
     def len(self):
         return len(self.list_IDs)
@@ -18,6 +18,7 @@ class Dataset_g(data.Dataset):
 
     def append(self, other):
         self.list_IDs.extend(other.list_IDs)
+        self.es = np.append(self.es, other.es)
 
     def __getitem__(self, index):
         'Generates one sample of data'
@@ -27,6 +28,4 @@ class Dataset_g(data.Dataset):
         X = torch.LongTensor(ID)
         ecat = self.es[index]
         e = torch.FloatTensor(ecat)
-        label = self.labels[index]
-        y = torch.LongTensor(label)
-        return X, e, y
+        return X, e

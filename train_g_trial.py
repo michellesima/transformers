@@ -1,4 +1,5 @@
 from transformers import *
+import os
 import sys
 from transformers.modeling_openai import OpenAIGPTLMHeadAgenModel
 from torch.nn import CrossEntropyLoss
@@ -7,10 +8,19 @@ from torch import utils
 
 noise_frac = 0.4
 
-def train(path='openai-gpt', mind=0):
-    max_epochs = 4
-    train_ds = process_in_g(TRAIN_G)
-    savedir = './modelg/savedmodels'
+def train(ds, path='openai-gpt', mind=0):
+    max_epochs = 10
+    if ds == 'roc':
+        train_ds = process_in_g(ROC_TRAIN_G)
+        savedir = './modelg/savedmodels'
+    elif ds == 'para':
+        train_ds = process_in_g(PARA_TRAIN_G)
+        savedir = './modelgp/savedmodels'
+    else:
+        train_ds = process_in_g(PARA_TRAIN_G)
+        train_roc = process_in_g(ROC_TRAIN_G)
+        train_ds.append(train_roc)
+        savedir = './modelgm/savedmodels'
     model = OpenAIGPTLMHeadAgenModel.from_pretrained(path) #model not on cuda
     if path == 'openai-gpt':
         model.resize_token_embeddings(tokenizer_g.vocab_size + num_added_token_g)
@@ -30,12 +40,13 @@ def train(path='openai-gpt', mind=0):
         count = 0
         if not os.path.exists(savepath):
             os.mkdir(savepath)
+        path = os.path.join(savepath, 'model.bin')
+        torch.save(model.state_dict(), path)
         for local_batch, local_labels in enumerate(training_generator):
             # Transfer to GPUpri
             x = local_labels[0].to(device_g)
             e = local_labels[1].to(device_g)
-            label = local_labels[2].to(device_g)
-            outputs = model(x, e=e, labels=label)
+            outputs = model(x, e=e, labels=x)
             loss, logits = outputs[:2]
             losssum += loss
             count += 1
@@ -47,12 +58,13 @@ def train(path='openai-gpt', mind=0):
         print(epoch + 1)
         print(avg)
         #print(get_gpu_memory_map())
-        model.save_pretrained(savepath)
+        #model.save_pretrained(savepath)
         train_losses.append(avg)
 
     loss_df = pd.DataFrame()
     loss_df["train_loss"] = train_losses
-    loss_df.to_csv('loss_'+data+'.csv')
+    loss_df.to_csv('loss_g.csv')
 
 if __name__ == '__main__':
-    train()
+    ds = sys.argv[1]
+    train(ds)

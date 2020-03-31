@@ -26,6 +26,8 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
+import sys
+
 from transformers import GPT2Config, OpenAIGPTConfig, XLNetConfig, TransfoXLConfig, XLMConfig, CTRLConfig
 
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
@@ -107,11 +109,16 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
     return logits
 
 
-def sample_sequence(model, length, context, num_samples=1, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0,
+def sample_sequence(model, length, context, e=None, cat_head=None, num_samples=1, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0,
                     is_xlnet=False, is_xlm_mlm=False, xlm_mask_token=None, xlm_lang=None, device='cpu'):
     context = torch.tensor(context, dtype=torch.long, device=device)
     context = context.unsqueeze(0).repeat(num_samples, 1)
     generated = context
+    if torch.is_tensor(e):
+        cat_logits = cat_head(e)
+        cat_logits[-5:] *= 0
+        pad = torch.zeros((3), device=cat_logits.device)
+        cat_logits = torch.cat((cat_logits, pad), dim=0)
     with torch.no_grad():
         for _ in trange(length):
 
@@ -131,12 +138,14 @@ def sample_sequence(model, length, context, num_samples=1, temperature=1, top_k=
                 # => need one additional dummy token in the input (will be masked and guessed)
                 input_ids = torch.cat((generated, torch.full((1, 1), xlm_mask_token, dtype=torch.long, device=device)), dim=1)
                 inputs = {'input_ids': input_ids}
-
+                
             if xlm_lang is not None:
                 inputs["langs"] = torch.tensor([xlm_lang] * inputs["input_ids"].shape[1], device=device).view(1, -1)
 
             outputs = model(**inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet/CTRL (cached hidden-states)
             next_token_logits = outputs[0][0, -1, :] / (temperature if temperature > 0 else 1.)
+            if torch.is_tensor(e):
+                next_token_logits += cat_logits
             # decrease the prob for period for the first three words
             # reptition penalty from CTRL (https://arxiv.org/abs/1909.05858)
             for _ in set(generated.view(-1).tolist()):

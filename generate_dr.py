@@ -17,13 +17,7 @@ numepoch = 10
 ps = [0.4, 0.6]
 agen_vector = agen_vector(tokenizer_dr, num_added_token_dr, multi=False)
 agen_v = agen_verbs()
-REPEAT_PENALTY = 7.5
-
-def repeatN(list, n):
-    ori = list
-    for _ in range(n):
-        list = list.append(ori, ignore_index=True)
-    return list
+REPEAT_PENALTY = 5
 
 def gen_p(model, test_dataset, descat):
     outlist = []
@@ -110,8 +104,8 @@ def main(ds, mind, para='para'):
         gen_para(mind, para)
 
 if __name__ == '__main__':
-    ds, mind = sys.argv[1], sys.argv[2]
+    ds, mind, mtd = sys.argv[1], sys.argv[2], sys.argv[3]
     if len(sys.argv) == 4:
-        main(ds, mind, sys.argv[3])
+        main(ds, mind, mtd)
     else:
         main(ds, mind)

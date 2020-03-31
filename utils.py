@@ -2,6 +2,12 @@ import pandas as pd
 from nltk.stem import WordNetLemmatizer 
 from transformers import *
 
+def repeatN(list, n):
+    ori = list
+    for _ in range(n):
+        list = list.append(ori, ignore_index=True)
+    return list
+
 def agen_verbs():
     '''
     for word in each category, get its infinitive form if it's in verb.txt
@@ -17,7 +23,6 @@ def agen_verbs():
         ver_li = subdf['verb'].str.split()
         agen_v[v] = set(word_infinitive(li[0]) for li in ver_li if len(li) > 0)
         total += len(agen_v[v])
-    print(total)
     return agen_v
 
 

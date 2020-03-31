@@ -558,8 +558,7 @@ class OpenAIGPTLMHeadAgenModel(OpenAIGPTPreTrainedModel):
         super(OpenAIGPTLMHeadAgenModel, self).__init__(config)
         self.transformer = OpenAIGPTModel(config)
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
-        print(config.vocab_size)
-        self.cat_head = nn.Linear(3, config.vocab_size + 5)
+        self.cat_head = nn.Linear(3, config.vocab_size + 9)
         self.cat_head.to(torch.device("cuda:1"))
         self.init_weights()
         self.tie_weights()
@@ -573,13 +572,14 @@ class OpenAIGPTLMHeadAgenModel(OpenAIGPTPreTrainedModel):
 
     def forward(self, input_ids, e=None, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None,
                 labels=None):
-        transformer_outputs = self.transformer(input_ids,
+        with torch.no_grad():
+            transformer_outputs = self.transformer(input_ids,
                                                attention_mask=attention_mask,
                                                token_type_ids=token_type_ids,
                                                position_ids=position_ids,
                                                head_mask=head_mask)
-        hidden_states = transformer_outputs[0]
-        lm_logits = self.lm_head(hidden_states)
+            hidden_states = transformer_outputs[0]
+            lm_logits = self.lm_head(hidden_states)
         cat_logits = self.cat_head(e)
         lm_logits += cat_logits
         outputs = (lm_logits,) + transformer_outputs[1:]
