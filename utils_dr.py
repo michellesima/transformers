@@ -97,8 +97,6 @@ def parse_file_dr(file, noi_frac=0.1, train_time=True, para=False):
             df['v_supplied'] = tok_li[:, 1]
             tok_li = tok_li[:, 0]
         else:
-            if True:
-                df = df.sample(frac=0.1, random_state=7)
             cats = ['pos', 'neg', 'equal']
             tok_li = []
             retdf = pd.DataFrame()

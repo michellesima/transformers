@@ -14,7 +14,7 @@ random_seed = 7
 numepoch = 10
 softmax = nn.Softmax(dim=0)
 
-#agen_v = agen_vector(tokenizer_ivp, num_added_token_ivp, multi=False)
+agen_v = agen_vector(tokenizer_ivp, num_added_token_ivp, multi=True)
 
 def repeatN(list, n):
     ori = list
@@ -74,6 +74,7 @@ def gen_p(model, test_dataset, descat):
                 length=max_sen_len,
                 top_p=i,
                 label=label,
+                multi=True,
                 device=device_ivp
             )
             out = out[0, len(context_tokens):].tolist()
@@ -109,10 +110,7 @@ def gen_roc(mind):
     :param mind: epoch of model
     :return:
     '''
-    test_df = pd.read_csv('./data/roc/dev.csv')
-    test_df = test_df.sample(frac=0.1)
-    # list of encoded sen
-    test_dataset, res_df = make_dataset(test_df, max_sen_len, para=False, train_time=False)
+    test_dataset, res_df = make_dataset(ROC_DEV, max_sen_len, para=False, train_time=False)
     res_df = repeatN(res_df, len(ps) - 1)
     finaldf = eval_model(mind, test_dataset, res_df) 
     savedfile = 'gen_sen/res_sen_roc_ivp.csv'

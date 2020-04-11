@@ -26,15 +26,12 @@ def gen_p(model, test_dataset, descat):
         for j in range(len(test_dataset)):
             sen = test_dataset[j]
             senlen = len(sen)
-            out = sample_sequence_ivp(
+            out = sample_sequence(
                 model=model,
                 context=sen,
-                agen_v=agen_vector,
                 length=max_sen_len,
                 top_p=i,
                 repetition_penalty=REPEAT_PENALTY,
-                label=descat[j],
-                multi=False,
                 device=device_dr
             )
             out = out[0, senlen:].tolist()
@@ -77,7 +74,7 @@ def eval_model(mind, test_dataset, df, mtd='para'):
 
 def gen_roc(mindi, model='para'):
     test_dataset, df = parse_file_dr(ROC_DEV, train_time=False)
-    print(df.columns)
+    print(len(df.index))
     finaldf = eval_model(mind, test_dataset, df, mtd=model)
     savedfile = 'gen_sen/res_sen_roc_del_only.csv'
     finaldf.to_csv(savedfile)
@@ -104,6 +101,7 @@ def main(ds, mind, para='para'):
         gen_para(mind, para)
 
 if __name__ == '__main__':
+    # mtd: model trained dataset
     ds, mind, mtd = sys.argv[1], sys.argv[2], sys.argv[3]
     if len(sys.argv) == 4:
         main(ds, mind, mtd)

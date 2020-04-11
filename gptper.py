@@ -7,7 +7,7 @@ import math
 get the perplexity on gpt
 python gptper.py <dataset> <method> <toeval('sen' or 'sen0' or 'out')> (<pvalue>)
 '''
-device_2 = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device_2 = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def measurepp(df, toeval):
     df = df.sample(n=150)
@@ -35,15 +35,13 @@ def measurepp(df, toeval):
             res += math.log2(logits[i][tok_li[i]])
             '''
     res /= count
-    print(res)
     res = math.exp(res)
     print(res)
 
 if __name__ == '__main__':
-    ds, method = sys.argv[1], sys.argv[2]
+    ds, method, toeval = sys.argv[1], sys.argv[2], sys.argv[3]
     filepath = './gen_sen/res_sen_' + ds + '_' + method + '.csv'
     df = pd.read_csv(filepath)
-    toeval = sys.argv[3]
     if len(sys.argv) == 5:
         pval = float(sys.argv[4])
         df = df[df['p-value']==pval]

@@ -29,9 +29,8 @@ if __name__ == '__main__':
     else:
         dev_ds = process_in_g(PARA_DEV_G)
         dev_roc = process_in_g(ROC_DEV_G)
-        dev_ds.append(train_roc)
+        dev_ds.append(dev_roc)
         savedir = './modelgm/savedmodels'
-    savedir = './modelg/savedmodels'
     dev_generator = data.DataLoader(dev_ds, batch_size = batchsize, shuffle=True)
     ini = 0
     train_losses = []

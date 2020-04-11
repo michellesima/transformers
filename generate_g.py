@@ -13,22 +13,24 @@ import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
 from examples.run_generation import *
 
-ps = [0.4, 0.6]
+ps = [0.4]
+BETA = 5
 cats = {
     'pos': 0,
     'equal': 1,
     'neg': 2
 }
 
-def gen_p(model, test_dataset, descat, cat_head):
+def gen_p(model, test_dataset, descat, cat_head, cats):
     outlist = []
     outp = []
     sens = []
     for i in ps:
         for j in range(len(test_dataset)):
             sen = test_dataset[j]
-            sepind = sen.index(40481)
-            sen = sen[:sepind+2]
+            cat = '<' + cats[j] + '>'
+            sen.extend(tokenizer_g.encode(cat))
+            sen.append(tokenizer_g.bos_token_id)
             senlen = len(sen)
             e = torch.FloatTensor(descat[j]).to(device_g)
             # e [1,3]
@@ -39,6 +41,7 @@ def gen_p(model, test_dataset, descat, cat_head):
                 top_p=i,
                 e=e,
                 cat_head=cat_head,
+                beta=BETA,
                 device=device_g
             )
             out = out[0, senlen:].tolist()
@@ -52,9 +55,10 @@ def gen_p(model, test_dataset, descat, cat_head):
             outp.append(i)
     return outlist, outp, sens
 
-def add_cat(dataset):
+def add_cat(orisen, dataset):
     resds = []
     descat = []
+    orids = []
     es = np.zeros((1, 3))
     es[0][0] = 1
     descat = ['pos'] * len(dataset)
@@ -72,17 +76,18 @@ def add_cat(dataset):
     ens = np.repeat(en, len(dataset), axis=0)
     es = np.append(es, ens, axis=0)
     for i in range(3):
+        orids.extend(orisen)
         resds.extend(dataset)
-    print(len(dataset))
-    return resds, es, descat
+    return orids, resds, es, descat
 
 def gen_roc(model, cat_head):
-    test_dataset = process_in_g(ROC_DEV_G, train=False)
-    test_dataset, es, descat = add_cat(test_dataset)
-    outlist, outp, sens = gen_p(model, test_dataset, es, cat_head)
+    orisen, test_dataset = process_in_g(ROC_DEV_G, train=False)
+    orids, test_dataset, es, descat = add_cat(orisen, test_dataset)
+    outlist, outp, sens = gen_p(model, test_dataset, es, cat_head, descat)
     df = pd.DataFrame()
     test_dataset = pd.Series(data=test_dataset)
     descat = pd.Series(data=descat)
+    df['orisen'] = orids
     df['sen'] = sens
     df['descat'] = repeatN(descat, len(ps)-1)
     print(len(df.index))
@@ -96,6 +101,7 @@ def main(ds, mind):
     savepath = './modelgp/savedmodels' + mind
 
     modelg = OpenAIGPTLMHeadAgenModel.from_pretrained('openai-gpt')
+    print(num_added_token_g)
     modelg.resize_token_embeddings(tokenizer_g.vocab_size + num_added_token_g)
     path = os.path.join(savepath, 'model.bin')
     modelg.load_state_dict(torch.load(path))

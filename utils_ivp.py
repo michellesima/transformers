@@ -1,4 +1,5 @@
 from utils import *
+from dataset_dr import Dataset_dr
 import torch
 from transformers import *
 import sys
@@ -9,6 +10,10 @@ input = 'input'
 output = 'out'
 VER_MAG_RATE = 1.5
 VER_ADD_VAL = 5
+
+TRAIN_DR = 'data/parads/train_dr.csv'
+DEV_DR = 'data/parads/dev_dr.csv'
+TEST_DR = 'data/parads/test_dr.csv'
 
 use_cuda = torch.cuda.is_available()
 tokenizer_ivp = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
@@ -57,7 +62,7 @@ def get_label_ivp(x, batchsize):
 
     cls_ind = ((x == tokenizer_ivp.cls_token_id).nonzero())
     end_ind = ((x == tokenizer_ivp.eos_token_id).nonzero())
-    for i in range(batchsize):
+    for i in range(x.size()[0]):
         # do not include the last cls token
         startind = cls_ind[i][1] + 2
         # include the eos token
@@ -66,11 +71,17 @@ def get_label_ivp(x, batchsize):
         label[i][endind:] = torch.FloatTensor([-1 for _ in range(max_sen_len - endind)])
     return label
 
-def make_dataset(df, maxlen, para=True, train_time=True):
+def make_dataset(file, maxlen=64, para=True, train_time=True):
+    df = pd.read_csv(file)
     if para:
         sen = 'sen0'
+        dest = 'sen1'
+        agen = 'oricat1'
     else:
         sen = 'sen'
+        dest = 'sen'
+        agen = 'oricat'
+    
     if not train_time:
         ser = pd.Series()
         res_df = pd.DataFrame()
@@ -83,9 +94,9 @@ def make_dataset(df, maxlen, para=True, train_time=True):
             res_df = res_df.append(subdf)
         list_in = [tokenizer_ivp.encode(s, add_special_tokens=False) for s in ser]
         return list_in, res_df
-    df[input] = '<start> ' + df['sen0'] + ' <cls> <' + df['agen_cat1'] + \
-        '> ' + df['sen1'] + ' <end>'
+    df[input] = '<start> ' + df[sen] + ' <cls> <' + df[agen] + \
+        '> ' + df[dest] + ' <end>'
     list_id = [tokenizer_ivp.encode(s, add_special_tokens=False) for s in df[input]]
-    list_id = add_pad(list_id)
-    dataset = Dataset(list_IDs=list_id)
+    list_id = add_pad(list_id, tokenizer_ivp)
+    dataset = Dataset_dr(list_IDs=list_id)
     return dataset

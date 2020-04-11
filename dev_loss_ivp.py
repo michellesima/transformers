@@ -2,6 +2,7 @@ import torch
 from transformers import *
 import pandas as pd
 from utils import *
+from utils_ivp import *
 from torch.utils import data
 from torch.nn import CrossEntropyLoss
 import os
@@ -29,8 +30,7 @@ def parse_data():
         'additional_special_tokens': ['<pos>', '<neg>', '<equal>']
     }
     num_added_token = tokenizer.add_special_tokens(token_dict)
-    dev_df = pd.read_csv('~/transformers/data/parads/senp_bs_dev.zip')
-    dev_dataset = make_dataset_para(dev_df, tokenizer, max_sen_len)
+    dev_dataset = make_dataset(ROC_DEV, para=False)
     return dev_dataset, num_added_token
 
 
@@ -55,7 +55,7 @@ if __name__ == '__main__':
         for local_batch, local_labels in enumerate(dev_generator):
             # Transfer to GPUpri
             x = local_labels # b * s
-            label = get_label(x, batchsize)
+            label = get_label_ivp(x, batchsize)
             outputs = model(x.to(device), labels=label.to(device))
             loss, logits = outputs[:2]
             losssum += loss
@@ -63,6 +63,7 @@ if __name__ == '__main__':
             loss.backward()
             # Model computations
         avg = losssum / count
+        print(avg)
         print(epoch)
         train_losses.append(avg)
 

@@ -581,6 +581,8 @@ class OpenAIGPTLMHeadAgenModel(OpenAIGPTPreTrainedModel):
             hidden_states = transformer_outputs[0]
             lm_logits = self.lm_head(hidden_states)
         cat_logits = self.cat_head(e)
+        print(lm_logits.size())
+        print(cat_logits.size())
         lm_logits += cat_logits
         outputs = (lm_logits,) + transformer_outputs[1:]
         if labels is not None:
